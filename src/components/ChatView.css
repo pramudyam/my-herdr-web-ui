@@ -357,19 +357,74 @@
   color: var(--text-dim);
 }
 
-/* code sits under the line it is in, at any size of that line: a chip in a heading, in settled
-   narration and in an answer are each a step below their own text */
-.markdown :not(pre) > code {
-  padding: var(--hairline) var(--space-1);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
-  color: var(--text-strong);
+/* Inline code: clean monospace with editor syntax-highlighted contrast */
+.markdown :not(pre) > code,
+.code-token {
   font-family: var(--font-mono);
-  font-size: 0.87em;
+  font-size: 0.9em;
+  font-weight: 600;
+  padding: 0.12em 0.38em;
+  margin: 0;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  box-shadow: none;
+  display: inline;
+  white-space: break-spaces;
+}
+
+/* Command: Terminal Lime Green */
+.code-token-command {
+  color: #4ade80 !important;
+  background: rgba(74, 222, 128, 0.08) !important;
+}
+
+/* Network / IP / Host: Cyber Neon Sky Blue */
+.code-token-network {
+  color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.08) !important;
+}
+
+/* Port: Neon Amber Yellow */
+.code-token-port {
+  color: #fbbf24 !important;
+  background: rgba(251, 191, 36, 0.08) !important;
+}
+
+/* Path / File: Electric Violet / Purple */
+.code-token-path,
+.markdown-file.is-code code {
+  color: #c084fc !important;
+  background: rgba(192, 132, 252, 0.08) !important;
+}
+
+/* CLI Flag / Option: Coral / Hot Orange */
+.code-token-flag {
+  color: #f87171 !important;
+  background: rgba(248, 113, 113, 0.08) !important;
+}
+
+/* Environment Variable: Vivid Pink */
+.code-token-env {
+  color: #f472b6 !important;
+  background: rgba(244, 114, 182, 0.08) !important;
+}
+
+/* Keywords: Warm Syntax Orange */
+.code-token-keyword {
+  color: #fb923c !important;
+  background: rgba(251, 146, 60, 0.08) !important;
+}
+
+/* Default (e.g. `test`): Crisp High-Contrast Cyan */
+.code-token-default,
+.markdown :not(pre) > code:not([class*="code-token"]) {
+  color: #22d3ee !important;
+  background: rgba(34, 211, 238, 0.08) !important;
 }
 
 .chat-bubble .markdown :not(pre) > code {
-  background: var(--bg-hover);
+  background: rgba(0, 0, 0, 0.25);
 }
 
 /* a link keeps its color and its underline (never color alone); the underline is quiet at rest */
@@ -400,57 +455,56 @@
   width: 100%;
   margin-bottom: var(--space-3);
   overflow: hidden;
-  border: var(--hairline) solid var(--border);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius-lg);
-  background: var(--bg-panel);
-  color: var(--text);
+  background: #090c10;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .markdown-code-header {
-  min-height: var(--control-h);
-  padding-inline: var(--space-3);
+  min-height: 32px;
+  padding: 4px 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: var(--hairline) solid var(--border);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #161b22;
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: var(--fs-2xs);
+  user-select: none;
 }
 
-/* With a mouse a code block has no header strip: its language and copy control sit over the
-   top right corner and show on hover or focus. Touch keeps the strip, where nothing can
-   cover the code. */
-@media (hover: hover) and (pointer: fine) and (not (any-pointer: coarse)) {
-  .markdown-code {
-    position: relative;
-  }
+.term-window-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 
-  .markdown-code-header {
-    position: absolute;
-    top: var(--space-1);
-    right: var(--space-1);
-    min-height: 0;
-    padding: 0 0 0 var(--space-2);
-    gap: var(--space-1);
-    border-bottom: 0;
-    border-radius: var(--radius-md);
-    background: var(--bg-panel);
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity var(--dur-fast) var(--ease-out);
-  }
+.t-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
 
-  .markdown-code:hover .markdown-code-header,
-  .markdown-code:focus-within .markdown-code-header {
-    opacity: 1;
-    pointer-events: auto;
-  }
+.t-dot.dot-red { background: #ff5f56; }
+.t-dot.dot-yellow { background: #ffbd2e; }
+.t-dot.dot-green { background: #27c93f; }
+
+.term-lang-tag {
+  margin-left: 8px;
+  font-weight: 700;
+  font-size: 11px;
+  color: #8b949e;
+  text-transform: lowercase;
+  letter-spacing: 0.04em;
 }
 
 /* no height cap: an inner scroll hid the rest of the block on phones */
 .markdown-code .hl-code {
   padding: var(--space-3) var(--space-4);
+  background: #090c10;
   font-size: var(--fs-sm);
   line-height: var(--lh-code);
 }

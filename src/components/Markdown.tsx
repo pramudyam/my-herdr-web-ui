@@ -53,8 +53,71 @@ function MathExpression({ value, displayMode = false }: { value: string; display
 /** A file path the viewer opens: a button that reads as the text or code it replaced. */
 function FilePath({ path, code, open }: { path: string; code: boolean; open: (path: string) => void }) {
   const t = useT();
-  const label = code ? <code>{path}</code> : path;
+  const label = code ? <code className="code-token code-token-path">{path}</code> : path;
   return <button type="button" className={`markdown-file${code ? " is-code" : ""}`} title={t("Open {path}", { path })} onClick={() => open(path)}>{label}</button>;
+}
+
+export type CodeKind = "command" | "network" | "port" | "flag" | "path" | "env" | "keyword" | "default";
+
+const CLI_COMMANDS = new Set([
+  "git", "npm", "pnpm", "yarn", "bun", "node", "deno", "npx",
+  "cargo", "rustc", "python", "python3", "pip", "docker", "kubectl",
+  "curl", "wget", "ssh", "scp", "cat", "grep", "rg", "find", "fd",
+  "sed", "awk", "ls", "cd", "rm", "mkdir", "cp", "mv", "chmod", "chown",
+  "kill", "pkill", "taskkill", "netstat", "ps", "top", "htop", "systemctl",
+  "powershell", "cmd", "bash", "sh", "zsh", "sudo", "gsudo", "where", "which",
+  "echo", "export", "set", "herdr", "pi", "claude", "aider", "vim", "nano"
+]);
+
+const CODE_KEYWORDS = new Set([
+  "true", "false", "null", "undefined", "function", "const", "let", "var",
+  "async", "await", "return", "import", "export", "class", "interface",
+  "type", "if", "else", "for", "while", "switch", "case", "break", "continue"
+]);
+
+export function classifyCode(value: string): CodeKind {
+  const val = value.trim();
+  if (!val) return "default";
+
+  // Port (:4660, :7317, port 8080)
+  if (/^:\d{2,5}$/.test(val) || /^port\s+\d{2,5}$/i.test(val)) return "port";
+
+  // Network / IP / Host (127.0.0.1, 0.0.0.0, localhost, localhost:4660, 192.168.1.1:8080)
+  if (
+    /^(?:127\.0\.0\.1|0\.0\.0\.0|\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?(?:\/\S*)?$/.test(val) ||
+    /^localhost(?::\d+)?(?:\/\S*)?$/i.test(val) ||
+    /^https?:\/\//i.test(val) ||
+    /^(?:\[::1\]|::1)(?::\d+)?$/.test(val)
+  ) return "network";
+
+  // CLI Flags (--help, -v, -la, /F, /IM, -NoProfile)
+  if (/^--[a-zA-Z0-9_-]+(=.*)?$/.test(val) || /^-[a-zA-Z0-9]+$/.test(val) || /^\/[A-Z0-9]+$/i.test(val)) return "flag";
+
+  // File Paths / Extensions (server.js, .json, C:\..., ./src)
+  if (
+    /\.(?:js|ts|tsx|jsx|json|toml|yaml|yml|md|css|html|sh|ps1|bat|cmd|rs|py|go|lock|env|log|exe|dll|png|jpg|svg)$/i.test(val) ||
+    /^[A-Za-z]:\\/.test(val) ||
+    /^(?:\.{1,2}\/|\/|~\/)[\w@.+-]+/.test(val)
+  ) return "path";
+
+  // Environment variables ($PATH, %PATH%, NODE_ENV)
+  if (/^\$[A-Za-z0-9_]+$/.test(val) || /^%[A-Za-z0-9_]+%$/.test(val) || /^[A-Z][A-Z0-9_]{2,}$/.test(val)) return "env";
+
+  // CLI Command strings ($ git status, npm run build, taskkill ...)
+  if (val.startsWith("$ ") || val.startsWith("# ") || val.startsWith("> ")) return "command";
+  const firstWord = val.split(/[\s|&;]/)[0]?.toLowerCase();
+  if (firstWord && CLI_COMMANDS.has(firstWord)) return "command";
+  if (val.includes(" | ") || val.includes(" && ") || val.includes(" || ") || /^(?:Get-|Stop-|Start-|Set-|New-)[A-Z]/i.test(val)) return "command";
+
+  // Keywords
+  if (CODE_KEYWORDS.has(val.toLowerCase())) return "keyword";
+
+  return "default";
+}
+
+export function CodeToken({ value }: { value: string }) {
+  const kind = classifyCode(value);
+  return <code className={`code-token code-token-${kind}`}>{value}</code>;
 }
 
 /** `interactive` is false inside a link or file label: nothing clickable nests in another. */
@@ -72,8 +135,8 @@ function Inline({ nodes, interactive = true }: { nodes: InlineNode[]; interactiv
         const file = fileUriPath(node.value);
         if (open !== null && file !== null) return <FilePath key={key} path={file} code open={open} />;
         // agents often put an address in backticks: it stays code to the eye, and opens
-        if (interactive && /^https?:\/\/\S+$/i.test(node.value)) return <a key={key} className="markdown-code-link" href={node.value} target="_blank" rel="noopener noreferrer"><code>{node.value}</code></a>;
-        return open !== null && codeIsFilePath(node.value) ? <FilePath key={key} path={node.value} code open={open} /> : <code key={key}>{node.value}</code>;
+        if (interactive && /^https?:\/\/\S+$/i.test(node.value)) return <a key={key} className="markdown-code-link" href={node.value} target="_blank" rel="noopener noreferrer"><CodeToken value={node.value} /></a>;
+        return open !== null && codeIsFilePath(node.value) ? <FilePath key={key} path={node.value} code open={open} /> : <CodeToken key={key} value={node.value} />;
       }
       case "math": return <MathExpression key={key} value={node.value} />;
       case "strong": return <strong key={key}><Inline nodes={node.children} interactive={interactive} /></strong>;
@@ -85,7 +148,7 @@ function Inline({ nodes, interactive = true }: { nodes: InlineNode[]; interactiv
         const label = <Inline nodes={node.children} interactive={false} />;
         return open !== null
           ? <button key={key} type="button" className="markdown-file" title={t("Open {path}", { path: node.path })} onClick={() => open(node.path)}>{label}</button>
-          : <span key={key}>{label} (<code>{node.path}</code>)</span>;
+          : <span key={key}>{label} (<code className="code-token code-token-path">{node.path}</code>)</span>;
       }
     }
   })}</>;
@@ -144,7 +207,12 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
   return (
     <div className="markdown-code" ref={block}>
       <div className="markdown-code-header">
-        <span>{language || "text"}</span>
+        <div className="term-window-dots">
+          <span className="t-dot dot-red"></span>
+          <span className="t-dot dot-yellow"></span>
+          <span className="t-dot dot-green"></span>
+          <span className="term-lang-tag">{language || "terminal"}</span>
+        </div>
         <button type="button" className="icon-button markdown-code-copy" onClick={() => void copy()} aria-label={t(copied ? "Code copied" : "Copy code")}>
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
         </button>
