@@ -158,22 +158,27 @@ BANK SUMUT MEDAN
 :71A:OUR
 -}`;
 
-const SAMPLE_MT300 = `{1:F01SPXAIDJAXXXX0000000001}{2:I300SPXAIDJAXXXXN}{3:{108:M300MUR001}{121:8afb3785-bb73-4cfa-a2d2-a373926cb5ee}}{4:
-:15A:
-:20:MT300BASE01
-:22A:NEWT
-:22C:SPXA011027SPXA01
-:82A:SPXAIDJAXXX
-:87A:SPXAIDJAXXX
-:15B:
-:30T:20260324
-:30V:20260325
-:36:1,055
-:32B:USD1186600,00
-:57A:CHASUS33XXX
-:33B:EUR1100000,00
-:57A:BMRIIDJAXXX
--}`;
+interface SwiftSample {
+  id: string;
+  name: string;
+  raw: string;
+  builtIn?: boolean;
+}
+
+const BUILTIN_SAMPLES: SwiftSample[] = [
+  {
+    id: "builtin-mt103",
+    name: "MT103 (Single Customer Transfer)",
+    raw: SAMPLE_MT103,
+    builtIn: true,
+  },
+  {
+    id: "builtin-mt300",
+    name: "MT300 (Foreign Exchange Confirmation)",
+    raw: SAMPLE_MT300,
+    builtIn: true,
+  },
+];
 
 export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProps) {
   const t = useT();
@@ -238,7 +243,61 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
   };
 
   // SWIFT Inspector state
-  const [swiftRaw, setSwiftRaw] = useState(SAMPLE_MT103);
+  const [swiftRaw, setSwiftRaw] = useState("");
+  const [samples, setSamples] = useState<SwiftSample[]>(() => {
+    try {
+      const stored = localStorage.getItem("herdr-web-ui:swift-samples");
+      if (stored) {
+        const custom = JSON.parse(stored) as SwiftSample[];
+        return [...BUILTIN_SAMPLES, ...custom];
+      }
+    } catch {}
+    return BUILTIN_SAMPLES;
+  });
+  const [selectedSampleId, setSelectedSampleId] = useState<string>("");
+  const [savingSample, setSavingSample] = useState(false);
+  const [sampleNameInput, setSampleNameInput] = useState("");
+
+  const onSelectSample = (id: string) => {
+    setSelectedSampleId(id);
+    if (!id) return;
+    const found = samples.find((s) => s.id === id);
+    if (found) {
+      setSwiftRaw(found.raw);
+    }
+  };
+
+  const onSaveCurrentAsSample = () => {
+    if (!sampleNameInput.trim() || !swiftRaw.trim()) return;
+    const newSample: SwiftSample = {
+      id: `custom-${Date.now()}`,
+      name: sampleNameInput.trim(),
+      raw: swiftRaw.trim(),
+      builtIn: false,
+    };
+    const updated = [...samples, newSample];
+    setSamples(updated);
+    const customOnly = updated.filter((s) => !s.builtIn);
+    try {
+      localStorage.setItem("herdr-web-ui:swift-samples", JSON.stringify(customOnly));
+    } catch {}
+    setSelectedSampleId(newSample.id);
+    setSampleNameInput("");
+    setSavingSample(false);
+  };
+
+  const onDeleteCurrentSample = () => {
+    if (!selectedSampleId) return;
+    const target = samples.find((s) => s.id === selectedSampleId);
+    if (target?.builtIn) return;
+    const updated = samples.filter((s) => s.id !== selectedSampleId);
+    setSamples(updated);
+    const customOnly = updated.filter((s) => !s.builtIn);
+    try {
+      localStorage.setItem("herdr-web-ui:swift-samples", JSON.stringify(customOnly));
+    } catch {}
+    setSelectedSampleId("");
+  };
 
   // Parse FIN / MX
   const parsedSwiftData = useMemo(() => {
@@ -552,38 +611,142 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
                 type="button"
                 className="icon-button"
                 style={{ width: "22px", height: "22px" }}
-                onClick={() => setSwiftRaw("")}
+                onClick={() => {
+                  setSwiftRaw("");
+                  setSelectedSampleId("");
+                }}
                 title="Kosongkan Box"
               >
                 <Trash2 size={13} />
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "2px" }}>
-              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Samples:</span>
+            {/* Custom Sample Dropdown Toolbar */}
+            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+              <select
+                className="select"
+                style={{
+                  flex: 1,
+                  fontSize: "var(--fs-xs)",
+                  padding: "4px 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--bg-input)",
+                  color: "var(--text)",
+                  border: "var(--hairline) solid var(--border)",
+                  cursor: "pointer",
+                }}
+                value={selectedSampleId}
+                onChange={(e) => onSelectSample(e.target.value)}
+              >
+                <option value="">— Pilih / Load Sample —</option>
+                <optgroup label="Sample Bawaan">
+                  {samples
+                    .filter((s) => s.builtIn)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                </optgroup>
+                {samples.some((s) => !s.builtIn) && (
+                  <optgroup label="Sample Custom Saya">
+                    {samples
+                      .filter((s) => !s.builtIn)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                  </optgroup>
+                )}
+              </select>
+
+              {/* Delete Custom Sample button */}
+              {selectedSampleId && !samples.find((s) => s.id === selectedSampleId)?.builtIn && (
+                <button
+                  type="button"
+                  className="icon-button"
+                  style={{ width: "26px", height: "26px", color: "#f87171" }}
+                  onClick={onDeleteCurrentSample}
+                  title="Hapus sample ini dari daftar"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+
+              {/* Add current text as sample button */}
               <button
                 type="button"
                 className="scratchpad-btn"
-                style={{ padding: "2px 7px", fontSize: "11px" }}
-                onClick={() => setSwiftRaw(SAMPLE_MT103)}
+                style={{ padding: "4px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
+                onClick={() => {
+                  if (!swiftRaw.trim()) return;
+                  const detected = parsedSwiftData.messageType
+                    ? parsedSwiftData.messageType.split(" — ")[0]
+                    : "SWIFT Message";
+                  setSampleNameInput(`${detected} (Custom)`);
+                  setSavingSample(!savingSample);
+                }}
+                disabled={!swiftRaw.trim()}
+                title="Simpan teks di kotak ini sebagai sample baru"
               >
-                MT103
-              </button>
-              <button
-                type="button"
-                className="scratchpad-btn"
-                style={{ padding: "2px 7px", fontSize: "11px" }}
-                onClick={() => setSwiftRaw(SAMPLE_MT300)}
-              >
-                MT300
+                <Plus size={12} />
+                <span>Simpan</span>
               </button>
             </div>
+
+            {/* Inline Save Sample Dialog */}
+            {savingSample && (
+              <div
+                style={{
+                  background: "var(--bg-hover)",
+                  border: "1px solid var(--accent)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                <div style={{ fontSize: "11px", color: "var(--text-dim)" }}>Beri nama sample ini:</div>
+                <input
+                  className="macro-input"
+                  placeholder="Contoh: MT300 Sumut / pacs.008 Danamon"
+                  value={sampleNameInput}
+                  onChange={(e) => setSampleNameInput(e.target.value)}
+                  autoFocus
+                />
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "6px" }}>
+                  <button
+                    type="button"
+                    className="scratchpad-btn"
+                    style={{ padding: "3px 8px", fontSize: "11px" }}
+                    onClick={() => setSavingSample(false)}
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    className="scratchpad-btn scratchpad-btn-primary"
+                    style={{ padding: "3px 8px", fontSize: "11px" }}
+                    onClick={onSaveCurrentAsSample}
+                    disabled={!sampleNameInput.trim()}
+                  >
+                    Simpan ke Dropdown
+                  </button>
+                </div>
+              </div>
+            )}
 
             <textarea
               className="swift-textarea"
               placeholder="Paste raw SWIFT FIN MT (MT103, MT300, dll) atau ISO 20022 MX di sini..."
               value={swiftRaw}
-              onChange={(e) => setSwiftRaw(e.target.value)}
+              onChange={(e) => {
+                setSwiftRaw(e.target.value);
+                // Clear selected sample if text modified
+                if (selectedSampleId) setSelectedSampleId("");
+              }}
             />
 
             <div className="swift-controls">
