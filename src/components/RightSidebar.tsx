@@ -31,34 +31,79 @@ export interface RightSidebarProps {
 
 type TabMode = "macros" | "swift" | "health";
 
+const SWIFT_MT_NAMES: Record<string, string> = {
+  MT101: "Request for Transfer",
+  MT103: "Single Customer Credit Transfer",
+  MT199: "Free Format Message",
+  MT202: "General Financial Institution Transfer",
+  MT202COV: "Cover Payment (Bank Transfer)",
+  MT299: "Free Format Message",
+  MT300: "Foreign Exchange Confirmation",
+  MT320: "Fixed Loan/Deposit Confirmation",
+  MT700: "Issue of Documentary Credit (LC)",
+  MT760: "Demand Guarantee / Standby LC",
+  MT900: "Confirmation of Debit",
+  MT910: "Confirmation of Credit",
+  MT940: "Customer Statement Message",
+  MT950: "Statement Message",
+  MT999: "Free Format Message",
+};
+
 const SWIFT_FIN_TAG_NAMES: Record<string, string> = {
+  ":14S:": "Settlement Rate Source",
+  ":15A:": "New Sequence A (General Information)",
+  ":15B:": "New Sequence B (Transaction Details)",
+  ":15C:": "New Sequence C (Optional Amounts)",
+  ":17T:": "Block Identifier",
   ":20:": "Sender's Reference (TRN)",
   ":21:": "Related Reference",
+  ":22A:": "Type of Operation",
+  ":22B:": "Type of Event",
+  ":22C:": "Common Reference",
   ":23B:": "Bank Operation Code",
   ":23E:": "Instruction Code",
   ":26T:": "Transaction Type Code",
+  ":30T:": "Trade Date",
+  ":30V:": "Value Date",
+  ":30X:": "Expiry Date",
+  ":31C:": "Date of Issue",
+  ":31D:": "Date & Place of Expiry",
   ":32A:": "Value Date / CCY / Amount",
-  ":33B:": "Instructed Amount",
+  ":32B:": "Currency / Amount Bought",
+  ":33B:": "Currency / Amount Sold",
   ":36:": "Exchange Rate",
   ":50A:": "Ordering Customer (BIC)",
   ":50F:": "Ordering Customer (Structured)",
   ":50K:": "Ordering Customer (Name & Addr)",
-  ":52A:": "Ordering Institution",
+  ":52A:": "Ordering Institution (BIC)",
   ":52D:": "Ordering Institution (Name)",
   ":53A:": "Sender's Correspondent",
   ":53B:": "Sender's Correspondent",
   ":54A:": "Receiver's Correspondent",
   ":56A:": "Intermediary Institution",
-  ":57A:": "Account With Institution (BIC)",
+  ":57A:": "Account With Institution (Receiving Agent BIC)",
   ":57D:": "Account With Institution",
+  ":58A:": "Beneficiary Institution",
+  ":58D:": "Beneficiary Institution",
   ":59:": "Beneficiary Customer",
   ":59A:": "Beneficiary Customer (BIC)",
+  ":59F:": "Beneficiary Customer (Structured)",
+  ":60F:": "Opening Balance",
+  ":61:": "Statement Line",
+  ":62F:": "Closing Balance",
+  ":64:": "Closing Available Balance",
   ":70:": "Remittance Information",
   ":71A:": "Details of Charges (OUR/SHA/BEN)",
   ":71F:": "Sender's Charges",
   ":71G:": "Receiver's Charges",
   ":72:": "Sender to Receiver Info",
+  ":77A:": "Settlement Details",
   ":77B:": "Regulatory Reporting",
+  ":77D:": "Terms and Conditions",
+  ":82A:": "Party A (BIC)",
+  ":82D:": "Party A (Name & Address)",
+  ":87A:": "Party B (BIC)",
+  ":87D:": "Party B (Name & Address)",
 };
 
 interface MacroItem {
@@ -111,6 +156,23 @@ JAKARTA
 BANK SUMUT MEDAN
 :70:PAYMENT INVOICE INTEGRATION
 :71A:OUR
+-}`;
+
+const SAMPLE_MT300 = `{1:F01SPXAIDJAXXXX0000000001}{2:I300SPXAIDJAXXXXN}{3:{108:M300MUR001}{121:8afb3785-bb73-4cfa-a2d2-a373926cb5ee}}{4:
+:15A:
+:20:MT300BASE01
+:22A:NEWT
+:22C:SPXA011027SPXA01
+:82A:SPXAIDJAXXX
+:87A:SPXAIDJAXXX
+:15B:
+:30T:20260324
+:30V:20260325
+:36:1,055
+:32B:USD1186600,00
+:57A:CHASUS33XXX
+:33B:EUR1100000,00
+:57A:BMRIIDJAXXX
 -}`;
 
 export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProps) {
@@ -179,36 +241,65 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
   const [swiftRaw, setSwiftRaw] = useState(SAMPLE_MT103);
 
   // Parse FIN / MX
-  const parsedSwiftTags = useMemo(() => {
+  const parsedSwiftData = useMemo(() => {
     const raw = swiftRaw.trim();
-    if (!raw) return [];
+    if (!raw) return { messageType: null, senderBic: null, receiverBic: null, tags: [] };
+
+    // Detect MT message type from Block 2
+    let messageType: string | null = null;
+    const mtMatch = raw.match(/\{2:[IO](\d{3})/i);
+    if (mtMatch) {
+      const code = "MT" + mtMatch[1];
+      const name = SWIFT_MT_NAMES[code] ?? "SWIFT Financial Message";
+      messageType = `${code} — ${name}`;
+    } else if (raw.includes("pacs.008")) {
+      messageType = "pacs.008 — FI to FI Customer Credit Transfer";
+    } else if (raw.includes("pacs.009")) {
+      messageType = "pacs.009 — Financial Institution Credit Transfer";
+    } else if (raw.includes("camt.053")) {
+      messageType = "camt.053 — Bank-to-Customer Statement";
+    }
+
+    // Detect Sender BIC from Block 1
+    const senderMatch = raw.match(/\{1:F\d{2}([A-Z0-9]{12})/i);
+    const senderBic = senderMatch ? senderMatch[1] : null;
+
+    // Detect Receiver BIC from Block 2
+    const receiverMatch = raw.match(/\{2:[IO]\d{3}([A-Z0-9]{12})/i);
+    const receiverBic = receiverMatch ? receiverMatch[1] : null;
 
     // FIN MT Detection: match :XX: or :XXA:
     const tagRegex = /(:\d{2}[A-Z]?:)([\s\S]*?)(?=(:\d{2}[A-Z]?:)|-\}|$)/g;
-    const matches: { code: string; name: string; val: string }[] = [];
+    const tags: { code: string; name: string; val: string }[] = [];
     let match;
 
     while ((match = tagRegex.exec(raw)) !== null) {
       const code = match[1]!;
       const val = match[2]!.trim();
       const name = SWIFT_FIN_TAG_NAMES[code] ?? "SWIFT Standard Field";
-      matches.push({ code, name, val });
+      tags.push({
+        code,
+        name,
+        val: val.length > 0 ? val : "(Sequence delimiter / Marker)",
+      });
     }
 
-    if (matches.length > 0) return matches;
+    if (tags.length > 0) {
+      return { messageType, senderBic, receiverBic, tags };
+    }
 
     // XML / MX Fallback Detection
     const xmlRegex = /<([a-zA-Z0-9]+)>([^<]+)<\/\1>/g;
     let xmlMatch;
     while ((xmlMatch = xmlRegex.exec(raw)) !== null) {
-      matches.push({
+      tags.push({
         code: `<${xmlMatch[1]}>`,
         name: "ISO 20022 Element",
         val: xmlMatch[2]!.trim(),
       });
     }
 
-    return matches;
+    return { messageType, senderBic, receiverBic, tags };
   }, [swiftRaw]);
 
   // Quota & Health
@@ -459,17 +550,38 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
               <span>🏦 SWIFT MT / MX Inspector</span>
               <button
                 type="button"
+                className="icon-button"
+                style={{ width: "22px", height: "22px" }}
+                onClick={() => setSwiftRaw("")}
+                title="Kosongkan Box"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: "6px", alignItems: "center", marginBottom: "2px" }}>
+              <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>Samples:</span>
+              <button
+                type="button"
                 className="scratchpad-btn"
-                style={{ padding: "2px 6px", fontSize: "11px" }}
+                style={{ padding: "2px 7px", fontSize: "11px" }}
                 onClick={() => setSwiftRaw(SAMPLE_MT103)}
               >
-                Sample MT103
+                MT103
+              </button>
+              <button
+                type="button"
+                className="scratchpad-btn"
+                style={{ padding: "2px 7px", fontSize: "11px" }}
+                onClick={() => setSwiftRaw(SAMPLE_MT300)}
+              >
+                MT300
               </button>
             </div>
 
             <textarea
               className="swift-textarea"
-              placeholder="Paste raw SWIFT FIN MT / ISO 20022 MX message here..."
+              placeholder="Paste raw SWIFT FIN MT (MT103, MT300, dll) atau ISO 20022 MX di sini..."
               value={swiftRaw}
               onChange={(e) => setSwiftRaw(e.target.value)}
             />
@@ -487,17 +599,42 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
               </button>
             </div>
 
+            {/* Detected Message Type Header Badge */}
+            {parsedSwiftData.messageType && (
+              <div
+                style={{
+                  background: "var(--bg-input)",
+                  border: "1px solid var(--accent)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "8px 10px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "3px",
+                }}
+              >
+                <div style={{ fontSize: "var(--fs-xs)", fontWeight: "bold", color: "var(--accent)" }}>
+                  {parsedSwiftData.messageType}
+                </div>
+                {(parsedSwiftData.senderBic || parsedSwiftData.receiverBic) && (
+                  <div style={{ fontSize: "11px", color: "var(--text-dim)", fontFamily: "var(--font-mono)" }}>
+                    {parsedSwiftData.senderBic && <span>From: {parsedSwiftData.senderBic} </span>}
+                    {parsedSwiftData.receiverBic && <span>→ To: {parsedSwiftData.receiverBic}</span>}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="sidebar-section-title" style={{ margin: "4px 0 0" }}>
-              <span>Parsed Fields ({parsedSwiftTags.length} tags)</span>
+              <span>Parsed Fields ({parsedSwiftData.tags.length} tags)</span>
             </div>
 
             <div className="swift-tag-list">
-              {parsedSwiftTags.length === 0 ? (
+              {parsedSwiftData.tags.length === 0 ? (
                 <p style={{ fontSize: "var(--fs-xs)", color: "var(--text-dim)", textAlign: "center", padding: "12px" }}>
                   Paste a SWIFT message above to inspect fields.
                 </p>
               ) : (
-                parsedSwiftTags.map((tag, idx) => (
+                parsedSwiftData.tags.map((tag, idx) => (
                   <div className="swift-tag-card" key={idx}>
                     <div className="swift-tag-header">
                       <span className="swift-tag-code">{tag.code}</span>
