@@ -26,7 +26,7 @@ export type UsageGlance = "week" | "session";
 /** amber: the herdr look (the default); report: the dark technical report look; charcoal: neutral Ghostty-style dark;
  *  catppuccin: Catppuccin Mocha in dark, Latte in light; lilac: lavender surfaces and indigo accents;
  *  forest: low-saturation green surfaces for long sessions */
-export type Palette = "amber" | "report" | "charcoal" | "catppuccin" | "lilac" | "forest" | "nord" | "tokyonight" | "dracula" | "moss";
+export type Palette = "amber" | "report" | "charcoal" | "catppuccin" | "lilac" | "forest" | "nord" | "tokyonight" | "dracula" | "moss" | "sandstone";
 /** the chat lane's widest: the transcript, the composer column and the held list share it (--chat-w in src/styles.css).
  *  narrow: 820px; default: follows the pane, up to 60rem (chatLaneWidth); wide: 72rem; full: the pane, less the gutters */
 export type ChatWidth = "narrow" | "default" | "wide" | "full";
@@ -304,7 +304,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     sidebarRows: record["sidebarRows"] === "one" || record["sidebarRows"] === "two" ? record["sidebarRows"] : DEFAULT_SETTINGS.sidebarRows,
     agentOrder: record["agentOrder"] === "workspace" || record["agentOrder"] === "activity" ? record["agentOrder"] : DEFAULT_SETTINGS.agentOrder,
     quietOpenedDone: record["quietOpenedDone"] === true,
-    palette: record["palette"] === "amber" || record["palette"] === "report" || record["palette"] === "charcoal" || record["palette"] === "catppuccin" || record["palette"] === "lilac" || record["palette"] === "forest" || record["palette"] === "nord" || record["palette"] === "tokyonight" || record["palette"] === "dracula" || record["palette"] === "moss" ? record["palette"] : DEFAULT_SETTINGS.palette,
+    palette: record["palette"] === "amber" || record["palette"] === "report" || record["palette"] === "charcoal" || record["palette"] === "catppuccin" || record["palette"] === "lilac" || record["palette"] === "forest" || record["palette"] === "nord" || record["palette"] === "tokyonight" || record["palette"] === "dracula" || record["palette"] === "moss" || record["palette"] === "sandstone" ? record["palette"] : DEFAULT_SETTINGS.palette,
     terminalFontSize: typeof font === "number" && Number.isFinite(font) ? clampFont(font) : DEFAULT_SETTINGS.terminalFontSize,
     terminalCursorStyle: TERMINAL_CURSOR_STYLES.includes(record["terminalCursorStyle"] as TerminalCursorStyle)
       ? record["terminalCursorStyle"] as TerminalCursorStyle
@@ -418,6 +418,10 @@ const TERMINAL_THEMES: Record<Palette, Record<ResolvedTheme, TerminalColors>> = 
     light: { background: "#f4f5ec", foreground: "#2d3324", cursor: "#bf9026", selectionBackground: "#dcdfc8" },
     dark: { background: "#1c2117", foreground: "#dcdfc8", cursor: "#bf9026", selectionBackground: "#3a4430" },
   },
+  sandstone: {
+    light: { background: "#faf9f2", foreground: "#2c2820", cursor: "#c0905e", selectionBackground: "#e4dfcc" },
+    dark: { background: "#1e1c17", foreground: "#e8e4cb", cursor: "#c0905e", selectionBackground: "#423c2e" },
+  },
 };
 
 export function terminalTheme(theme: ResolvedTheme, palette: Palette = "amber"): TerminalColors {
@@ -436,6 +440,7 @@ const THEME_COLOR: Record<Palette, Record<ResolvedTheme, string>> = {
   tokyonight: { dark: "#1a1b26", light: "#e1e2e7" },
   dracula: { dark: "#21222c", light: "#f8f8f2" },
   moss: { dark: "#22281c", light: "#f4f5ec" },
+  sandstone: { dark: "#26231b", light: "#faf9f2" },
 };
 
 function applyToDocument(settings: Settings, resolved: ResolvedTheme, language: Language): void {

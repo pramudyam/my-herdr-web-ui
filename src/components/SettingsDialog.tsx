@@ -161,6 +161,7 @@ function AppearancePage() {
           <option value="tokyonight">{t("Tokyo Night (Pastel Indigo)")}</option>
           <option value="dracula">{t("Dracula (Pastel Dark)")}</option>
           <option value="moss">{t("Moss Tactical (Olive & Gold)")}</option>
+          <option value="sandstone">{t("Sandstone (Desert Khaki & Caramel)")}</option>
         </select>
       </SettingsRow>
       <SettingsRow label={t("Density")}>
