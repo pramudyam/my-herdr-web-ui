@@ -420,7 +420,7 @@ const TERMINAL_THEMES: Record<Palette, Record<ResolvedTheme, TerminalColors>> = 
   },
   sandstone: {
     light: { background: "#faf9f2", foreground: "#2c2820", cursor: "#c0905e", selectionBackground: "#e4dfcc" },
-    dark: { background: "#1e1c17", foreground: "#e8e4cb", cursor: "#c0905e", selectionBackground: "#423c2e" },
+    dark: { background: "#242215", foreground: "#ede8cc", cursor: "#c0905e", selectionBackground: "#4a462c" },
   },
 };
 
@@ -440,7 +440,7 @@ const THEME_COLOR: Record<Palette, Record<ResolvedTheme, string>> = {
   tokyonight: { dark: "#1a1b26", light: "#e1e2e7" },
   dracula: { dark: "#21222c", light: "#f8f8f2" },
   moss: { dark: "#22281c", light: "#f4f5ec" },
-  sandstone: { dark: "#26231b", light: "#faf9f2" },
+  sandstone: { dark: "#222014", light: "#faf9f2" },
 };
 
 function applyToDocument(settings: Settings, resolved: ResolvedTheme, language: Language): void {
