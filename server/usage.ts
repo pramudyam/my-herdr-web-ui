@@ -619,6 +619,19 @@ function antigravitySignIn(value: string | null): SignIn | null {
   return { token: access, expiresAt: epochMs(token["expiry"]), account };
 }
 
+function piAgentAntigravitySignIn(raw: string | null): SignIn | null {
+  if (raw === null) return null;
+  const root = record(parseJson(raw));
+  const agy = record(root["antigravity"]);
+  if (!agy) return null;
+  const access = text(agy["access"]);
+  if (!access) return null;
+  const email = text(agy["email"]);
+  const expires = number(agy["expires"]);
+  const account = email ? { id: email, label: email } : null;
+  return { token: access, expiresAt: expires ?? null, account };
+}
+
 const ANTIGRAVITY_BUCKETS: Record<string, { kind: UsageWindow["kind"]; scope: string | null }> = {
   "gemini-5h": { kind: "session", scope: null },
   "gemini-weekly": { kind: "week", scope: null },
@@ -631,7 +644,9 @@ const antigravity: UsageProvider = {
   async signIns(ctx) {
     const dir = ctx.env["ANTIGRAVITY_APP_DATA_DIR"] || join(ctx.home, ".gemini", "antigravity-cli");
     const file = antigravitySignIn(readText(join(dir, "antigravity-oauth-token")));
-    return keychainOrFile(await fromKeychain(ctx, "gemini", ["antigravity"], antigravitySignIn), file, "keychain");
+    const piAuth = piAgentAntigravitySignIn(readText(join(ctx.home, ".pi", "agent", "auth.json")));
+    const candidate = file ?? piAuth;
+    return keychainOrFile(await fromKeychain(ctx, "gemini", ["antigravity"], antigravitySignIn), candidate, "keychain");
   },
   async read(ctx, signIn) {
     const init: RequestInit = {
@@ -659,7 +674,7 @@ const antigravity: UsageProvider = {
         if (shape && remaining !== null) windows.push({ ...shape, used_percent: percent((1 - remaining) * 100), resets_at: isoTime(value["resetTime"]), starts_at: null });
       }
     }
-    return { plan: null, windows };
+    return { plan: "Gemini Tier", windows };
   },
 };
 

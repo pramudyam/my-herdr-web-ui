@@ -33,6 +33,7 @@ export function UsageDashboardModal({ onClose }: UsageDashboardModalProps) {
   const { settings } = useSettings();
   const { report, loading, refresh } = useUsage(true);
   const [countMode, setCountMode] = useState<UsageCount>(settings.usageCount || "used");
+  const [selectedWinId, setSelectedWinId] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -50,19 +51,30 @@ export function UsageDashboardModal({ onClose }: UsageDashboardModalProps) {
 
   const providers: ProviderUsage[] = report ? orderProviders(report.providers, settings.usageOrder) : [];
 
-  // Find tightest window across all providers for primary gauge
-  let highestUsedPercent = 0;
+  // Default to Gemini 5-hour session window, or user selected, or tightest
   let primaryWindow: UsageWindow | null = null;
   let primaryProvider: ProviderUsage | null = null;
 
   for (const prov of providers) {
     for (const win of prov.windows) {
-      if (win.used_percent >= highestUsedPercent) {
-        highestUsedPercent = win.used_percent;
+      const winId = `${prov.key}:${win.kind}:${win.scope ?? "default"}`;
+      if (selectedWinId && winId === selectedWinId) {
+        primaryWindow = win;
+        primaryProvider = prov;
+        break;
+      }
+      if (!selectedWinId && win.kind === "session" && win.scope === null) {
         primaryWindow = win;
         primaryProvider = prov;
       }
     }
+    if (primaryWindow && (selectedWinId || primaryWindow.kind === "session")) break;
+  }
+
+  // Fallback to first available window if none matched
+  if (!primaryWindow && providers.length > 0 && providers[0]!.windows.length > 0) {
+    primaryProvider = providers[0]!;
+    primaryWindow = primaryProvider.windows[0]!;
   }
 
   const gaugePercent = primaryWindow ? meterPercent(primaryWindow, countMode) : 0;
@@ -238,8 +250,24 @@ export function UsageDashboardModal({ onClose }: UsageDashboardModalProps) {
                                 ? "#fbbf24"
                                 : "#34d399";
 
+                            const winKey = `${prov.key}:${win.kind}:${win.scope ?? "default"}`;
+                            const isSelected = selectedWinId === winKey || (!selectedWinId && primaryWindow === win);
+
                             return (
-                              <div className="usage-window-item" key={idx}>
+                              <div
+                                className={`usage-window-item${isSelected ? " is-active-window" : ""}`}
+                                key={idx}
+                                style={{
+                                  cursor: "pointer",
+                                  padding: "6px 8px",
+                                  borderRadius: "var(--radius-md)",
+                                  background: isSelected ? "var(--bg-hover)" : "transparent",
+                                  border: isSelected ? "1px solid var(--accent)" : "1px solid transparent",
+                                  transition: "all 0.15s ease",
+                                }}
+                                onClick={() => setSelectedWinId(winKey)}
+                                title="Click to view in circular gauge"
+                              >
                                 <div className="usage-window-meta">
                                   <span className="usage-window-label">{windowLabel(win)}</span>
                                   <div className="usage-window-stats">
