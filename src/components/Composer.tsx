@@ -13,7 +13,7 @@ import {
   type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
-import { ArrowUp, FileText, Plus, Square, X } from "lucide-react";
+import { ArrowUp, Camera, FileText, Plus, Square, X } from "lucide-react";
 
 import "./Composer.css";
 
@@ -261,6 +261,7 @@ export function Composer({
     if (autoFocus && !modalOpen()) textareaRef.current?.focus({ preventScroll: true });
   }, [autoFocus]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentsRef = useRef<Attachment[]>([]);
   const removedAttachments = useRef(new Set<number>());
   const fileRequest = useRef(0);
@@ -1018,6 +1019,18 @@ export function Composer({
               void uploadImages(picked);
             }}
           />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            onChange={(event) => {
+              const picked = Array.from(event.currentTarget.files ?? []);
+              event.currentTarget.value = "";
+              void uploadImages(picked);
+            }}
+          />
           <button
             type="button"
             className="icon-button composer-attach"
@@ -1027,6 +1040,16 @@ export function Composer({
             onClick={() => fileInputRef.current?.click()}
           >
             <Plus aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="icon-button composer-camera"
+            aria-label={t("Take photo")}
+            title={t("Take photo")}
+            disabled={!connected || uploading}
+            onClick={() => cameraInputRef.current?.click()}
+          >
+            <Camera aria-hidden="true" />
           </button>
           {dictation.shown && <MicButton dictation={dictation} />}
           <BackgroundTasks paneId={paneId} count={backgroundTasks} omo={agent === "omo"} claude={agent === "claude"} />

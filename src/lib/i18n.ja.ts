@@ -524,6 +524,7 @@ export const JA: Record<string, string> = {
   "Remove {file}": "{file} を削除",
   "Message": "メッセージ",
   "Attach files": "ファイルを添付",
+  "Take photo": "写真を撮影",
   "Next turn": "次のターン",
   "Discard saved copy": "保存したコピーを破棄",
   "Update this PC to send messages in the next turn. Your draft stayed here.": "次のターンにメッセージを送るには、このPCを更新してください。入力したメッセージはここに残っています。",

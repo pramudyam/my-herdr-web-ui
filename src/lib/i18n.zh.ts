@@ -526,6 +526,7 @@ export const ZH: Record<string, string> = {
   "Remove {file}": "移除 {file}",
   "Message": "消息",
   "Attach files": "附加文件",
+  "Take photo": "拍照",
   "Next turn": "下一轮",
   "Discard saved copy": "丢弃已保存的副本",
   "Update this PC to send messages in the next turn. Your draft stayed here.": "请更新这台电脑后再发送下一轮消息。草稿仍保留在这里。",

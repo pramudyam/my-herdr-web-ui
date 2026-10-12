@@ -522,6 +522,7 @@ export const KO: Record<string, string> = {
   "Remove {file}": "{file} 제거",
   "Message": "메시지",
   "Attach files": "파일 첨부",
+  "Take photo": "사진 촬영",
   "Next turn": "다음 차례",
   "Discard saved copy": "저장된 사본 버리기",
   "Update this PC to send messages in the next turn. Your draft stayed here.": "다음 차례에 메시지를 보내려면 이 PC를 업데이트하세요. 작성한 메시지는 여기에 남아 있습니다.",
