@@ -947,6 +947,70 @@
   --term-selection: #e5e1d2;
 }
 
+/* Moss Glow (Bright Luminous Pastel Moss & Honey Gold) */
+[data-theme="dark"][data-palette="moss-bright"] {
+  --bg: #232a1e;
+  --bg-panel: #1b2216;
+  --bg-elevated: #2e3827;
+  --bg-hover: #3b4732;
+  --bg-input: #171e13;
+  --border: #45543b;
+  --border-strong: #8cb85c;
+  --bubble-border: #5b734b;
+  --text: #f0f4dc;
+  --text-dim: #b0c098;
+  --text-strong: #ffffff;
+  --accent: #e6a832;
+  --accent-tint: rgba(230, 168, 50, 0.18);
+  --primary: #e6a832;
+  --primary-hover: #f3be4c;
+  --primary-text: #182012;
+  --primary-tint: rgba(230, 168, 50, 0.22);
+  --status-idle: #a4b890;
+  --status-working: #f5b041;
+  --status-blocked: #f87171;
+  --status-done: #a8e063;
+  --status-working-tint: rgba(245, 176, 65, 0.18);
+  --status-blocked-tint: rgba(248, 113, 113, 0.18);
+  --status-done-tint: rgba(168, 224, 99, 0.18);
+  --danger-tint: rgba(248, 113, 113, 0.15);
+  --danger-text: #f87171;
+  --scrim: rgba(18, 24, 15, 0.7);
+  --shadow-card: 0 4px 18px rgba(0, 0, 0, 0.42);
+  --term-bg: #1e2519;
+  --term-fg: #f0f4dc;
+  --term-cursor: #e6a832;
+  --term-selection: #3d4b34;
+  --syntax-keyword: #e6a832;
+  --syntax-string: #c2e87c;
+  --syntax-number: #f9c851;
+  --syntax-type: #80deea;
+  --syntax-variable: #f0f4dc;
+  --syntax-meta: #a8e063;
+  --syntax-function: #dce775;
+}
+
+[data-theme="light"][data-palette="moss-bright"] {
+  --bg: #f3f6eb;
+  --bg-panel: #fafcf5;
+  --bg-elevated: #e8ede0;
+  --bg-hover: #dfe6d5;
+  --bg-input: #ffffff;
+  --border: #cad4bf;
+  --border-strong: #78a75a;
+  --text: #1e2519;
+  --text-dim: #5c744c;
+  --text-strong: #11170d;
+  --accent: #b8801c;
+  --primary: #b8801c;
+  --primary-hover: #9c6b12;
+  --primary-text: #ffffff;
+  --term-bg: #fafcf5;
+  --term-fg: #1e2519;
+  --term-cursor: #b8801c;
+  --term-selection: #dfe6d5;
+}
+
 /* Colorful Lens Icons */
 .icon-chat-lens {
   color: #34d399 !important;
