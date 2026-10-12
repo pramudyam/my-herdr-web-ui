@@ -1493,6 +1493,21 @@ button {
     border-right: var(--hairline) solid var(--border);
     background: var(--bg-panel);
   }
+
+  /* Right sidebar header alignment: extends the right pane border up through the header */
+  .app.has-right-sidebar .header-meta {
+    display: flex;
+    flex: 0 0 340px;
+    width: 340px;
+    box-sizing: border-box;
+    align-items: center;
+    align-self: stretch;
+    justify-content: flex-end;
+    margin: calc(-1 * env(safe-area-inset-top, 0px)) calc(-1 * var(--space-3) - env(safe-area-inset-right, 0px)) calc(-1 * var(--hairline)) 0;
+    padding: env(safe-area-inset-top, 0px) calc(var(--space-3) + env(safe-area-inset-right, 0px)) 0 var(--space-3);
+    border-left: var(--hairline) solid var(--border);
+    background: var(--bg-panel);
+  }
 }
 
 /* ---------- primitives ---------- */

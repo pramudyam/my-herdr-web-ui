@@ -622,30 +622,18 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
         {/* TAB 2: SWIFT INSPECTOR */}
         {activeTab === "swift" && (
           <div className="swift-inspector-container">
-            <div className="sidebar-section-title">
+            <div className="sidebar-section-title" style={{ margin: 0 }}>
               <span>🏦 SWIFT MT / MX Inspector</span>
-              <button
-                type="button"
-                className="icon-button"
-                style={{ width: "22px", height: "22px" }}
-                onClick={() => {
-                  setSwiftRaw("");
-                  setSelectedSampleId("");
-                }}
-                title="Kosongkan Box"
-              >
-                <Trash2 size={13} />
-              </button>
             </div>
 
-            {/* Custom Sample Dropdown Toolbar */}
+            {/* Custom Sample Dropdown */}
             <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
               <select
                 className="select"
                 style={{
-                  flex: 1,
+                  width: "100%",
                   fontSize: "var(--fs-xs)",
-                  padding: "4px 8px",
+                  padding: "5px 8px",
                   borderRadius: "var(--radius-sm)",
                   background: "var(--bg-input)",
                   color: "var(--text)",
@@ -678,24 +666,26 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
                 )}
               </select>
 
-              {/* Delete Custom Sample button */}
+              {/* Delete Custom Sample button if selected */}
               {selectedSampleId && !samples.find((s) => s.id === selectedSampleId)?.builtIn && (
                 <button
                   type="button"
                   className="icon-button"
-                  style={{ width: "26px", height: "26px", color: "#f87171" }}
+                  style={{ width: "26px", height: "26px", color: "#f87171", flexShrink: 0 }}
                   onClick={onDeleteCurrentSample}
                   title="Hapus sample ini dari daftar"
                 >
                   <Trash2 size={13} />
                 </button>
               )}
+            </div>
 
-              {/* Add current text as sample button */}
+            {/* Quick Actions Row below the dropdown */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "6px" }}>
               <button
                 type="button"
                 className="scratchpad-btn"
-                style={{ padding: "4px 8px", fontSize: "11px", whiteSpace: "nowrap" }}
+                style={{ padding: "4px 10px", fontSize: "11px" }}
                 onClick={() => {
                   if (!swiftRaw.trim()) return;
                   const detected = parsedSwiftData.messageType
@@ -705,10 +695,25 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
                   setSavingSample(!savingSample);
                 }}
                 disabled={!swiftRaw.trim()}
-                title="Simpan teks di kotak ini sebagai sample baru"
+                title="Simpan teks di kotak ini sebagai sample baru di dropdown"
               >
                 <Plus size={12} />
-                <span>Simpan</span>
+                <span>Simpan ke Sample</span>
+              </button>
+
+              <button
+                type="button"
+                className="scratchpad-btn"
+                style={{ padding: "4px 8px", fontSize: "11px", color: "var(--text-dim)" }}
+                onClick={() => {
+                  setSwiftRaw("");
+                  setSelectedSampleId("");
+                }}
+                disabled={!swiftRaw.trim()}
+                title="Kosongkan Box"
+              >
+                <Trash2 size={12} />
+                <span>Clear</span>
               </button>
             </div>
 
