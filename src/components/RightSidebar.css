@@ -1,0 +1,354 @@
+/* Right Sidebar Styling */
+.right-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  min-width: 300px;
+  max-width: 420px;
+  background: var(--bg-panel);
+  border-left: var(--hairline) solid var(--border);
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  transition: width 0.2s ease, transform 0.2s ease;
+  z-index: 10;
+}
+
+@media (max-width: 768px) {
+  .right-sidebar {
+    position: fixed;
+    top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+    bottom: 0;
+    right: 0;
+    width: min(88vw, 360px);
+    z-index: var(--z-modal);
+    box-shadow: var(--shadow-pop);
+    transform: translateX(100%);
+  }
+
+  .right-sidebar.is-open {
+    transform: translateX(0);
+  }
+}
+
+/* Header & Tabs */
+.right-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--hairline) solid var(--border);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+
+.right-sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-hover);
+  padding: 3px;
+  border-radius: var(--radius-pill);
+  border: var(--hairline) solid var(--border);
+}
+
+.right-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.right-tab-btn:hover {
+  color: var(--text);
+}
+
+.right-tab-btn.is-active {
+  background: var(--bg-panel);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.right-tab-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.right-sidebar-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Tab 1: Scratchpad & Macros */
+.sidebar-section-title {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.scratchpad-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--bg-hover);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+}
+
+.scratchpad-textarea {
+  width: 100%;
+  min-height: 120px;
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.scratchpad-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.scratchpad-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scratchpad-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  border: var(--hairline) solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.scratchpad-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.scratchpad-btn-primary {
+  background: var(--accent);
+  color: #171a13;
+  font-weight: var(--fw-semibold);
+  border-color: var(--accent);
+}
+
+.scratchpad-btn-primary:hover {
+  opacity: 0.9;
+  color: #000;
+}
+
+/* Macros Grid */
+.macro-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.macro-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--bg-hover);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.macro-card:hover {
+  border-color: var(--border-strong);
+  background: var(--bg-elevated);
+}
+
+.macro-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.macro-card-title {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+
+.macro-card-cmd {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.macro-card-action {
+  color: var(--accent);
+  opacity: 0.8;
+  padding: 4px;
+}
+
+.macro-card:hover .macro-card-action {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Tab 2: SWIFT Tag Inspector */
+.swift-inspector-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.swift-textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-3);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.swift-controls {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.swift-tag-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.swift-tag-card {
+  background: var(--bg-hover);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.swift-tag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.swift-tag-code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--accent);
+  background: var(--bg-input);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.swift-tag-name {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: right;
+  flex: 1 1 auto;
+  margin-left: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.swift-tag-val {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--bg-input);
+  padding: 4px 6px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+
+/* Tab 3: Health & Context */
+.health-context-box {
+  background: var(--bg-hover);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.health-gauge-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: var(--space-2) 0;
+}
+
+.health-recap-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px var(--space-3);
+  background: var(--bg-input);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  border-radius: var(--radius-md);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.health-recap-btn:hover {
+  background: var(--accent);
+  color: #171a13;
+}

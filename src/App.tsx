@@ -1,5 +1,5 @@
 import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Activity, Bell, Ellipsis, FolderInput, FolderOpen, Link, Lock, Menu, MessageSquare, PanelLeft, Plus, Search, SquareTerminal, X } from "lucide-react";
+import { Activity, Bell, Ellipsis, FolderInput, FolderOpen, Link, Lock, Menu, MessageSquare, PanelLeft, PanelRight, Plus, Search, SquareTerminal, X } from "lucide-react";
 
 import type { AgentStatus, ServerMessage, AccessRefusal, HealthAuth, HerdrPane } from "../shared/protocol.ts";
 import { ApiError, authenticate, fetchHealth, fetchBridgeHealth, fetchMachines, fetchSession, pairDevice, routeMissing, sendTestPush, signOut, splitPane, zoomPane, type HealthInfo } from "./lib/api.ts";
@@ -20,6 +20,8 @@ import { isNavigation, linkSearch, linksSomewhere, NAV_KEY, readLink, resolveLin
 import { copyText } from "./lib/clipboard.ts";
 import { CommandPalette } from "./components/CommandPalette.tsx";
 import { UsageDashboardModal } from "./components/UsageDashboardModal.tsx";
+import { RightSidebar } from "./components/RightSidebar.tsx";
+import { composerDrafts } from "./lib/composerDraft.ts";
 import { MachineContext } from "./lib/machineContext.tsx";
 import { MachineActionBanner, MachineSidebar } from "./components/MachineSidebar.tsx";
 import { SidebarResizer } from "./components/SidebarResizer.tsx";
@@ -245,6 +247,33 @@ export function App() {
   const [lens, setLens] = useState<{ key: string; view: PaneView }>({ key: "", view: "terminal" });
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [usageDashboardOpen, setUsageDashboardOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(() => {
+    try {
+      return localStorage.getItem("herdr-web-ui:right-panel-open") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleRightPanel = useCallback(() => {
+    setRightPanelOpen((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("herdr-web-ui:right-panel-open", next ? "1" : "0");
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const insertPromptIntoComposer = useCallback((promptText: string) => {
+    if (selectedPaneId) {
+      const draftKey = `herdr-web-ui:composer-draft:${paneStorageId(selectedMachineId, selectedPaneId)}`;
+      composerDrafts.set(draftKey, promptText);
+      setTimeout(() => {
+        document.querySelector<HTMLTextAreaElement>(".composer-text")?.focus();
+      }, 50);
+    }
+  }, [selectedMachineId, selectedPaneId]);
   const [findRequest, setFindRequest] = useState<{ paneId: string | null; serial: number }>({ paneId: null, serial: 0 });
   // the header's More menu: its button, and whether it opened on a phone-width screen
   const [more, setMore] = useState<{ anchor: HTMLElement; phone: boolean } | null>(null);
@@ -1106,6 +1135,15 @@ export function App() {
             <Activity size={15} className="usage-trigger-icon" />
             <span className="usage-trigger-label header-desktop-only">Limits</span>
           </button>
+          <button
+            type="button"
+            className={`icon-button right-panel-toggle${rightPanelOpen ? " is-active" : ""}`}
+            aria-label="Toggle SWIFT & Macro Toolbox"
+            title="Toggle SWIFT & Macro Toolbox"
+            onClick={toggleRightPanel}
+          >
+            <PanelRight size={18} />
+          </button>
           {/* speaks only while the bridge is not live; live, it stays in the document for a screen
               reader (and the browser scripts that wait on it), drawn by nothing (styles.css) */}
           <span
@@ -1216,6 +1254,13 @@ export function App() {
         </main>
         </div>
         </OpenFileContext.Provider>
+
+        <RightSidebar
+          open={rightPanelOpen}
+          onClose={() => setRightPanelOpen(false)}
+          onInsertPrompt={insertPromptIntoComposer}
+        />
+        {rightPanelOpen && <div className="scrim right-scrim" aria-hidden="true" onClick={() => setRightPanelOpen(false)} />}
       </div>
 
       <MachineContext.Provider value={newSessionMachineId}><NewSessionDialog

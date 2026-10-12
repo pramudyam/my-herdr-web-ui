@@ -1011,6 +1011,21 @@
   --term-selection: #dfe6d5;
 }
 
+.right-panel-toggle.is-active {
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+
+@media (max-width: 768px) {
+  .right-scrim {
+    display: block !important;
+    position: fixed;
+    inset: calc(var(--header-h) + env(safe-area-inset-top, 0px)) 0 0 0;
+    z-index: calc(var(--z-modal) - 1);
+    background: var(--scrim);
+  }
+}
+
 /* Colorful Lens Icons */
 .icon-chat-lens {
   color: #34d399 !important;
