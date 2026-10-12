@@ -157,6 +157,9 @@ function AppearancePage() {
           <option value="catppuccin">{t("Catppuccin")}</option>
           <option value="lilac">{t("Lilac")}</option>
           <option value="forest">{t("Forest")}</option>
+          <option value="nord">{t("Nord (Muted Slate)")}</option>
+          <option value="tokyonight">{t("Tokyo Night (Pastel Indigo)")}</option>
+          <option value="dracula">{t("Dracula (Pastel Dark)")}</option>
         </select>
       </SettingsRow>
       <SettingsRow label={t("Density")}>
