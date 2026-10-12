@@ -172,6 +172,39 @@
 }
 
 /* Macros Grid */
+.add-macro-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-hover);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+.macro-input {
+  width: 100%;
+  background: var(--bg-input);
+  border: var(--hairline) solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-family: inherit;
+}
+
+.macro-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.macro-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 .macro-grid {
   display: flex;
   flex-direction: column;

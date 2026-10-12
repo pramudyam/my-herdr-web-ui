@@ -9,6 +9,7 @@ import {
   Copy,
   FileCode,
   Play,
+  Plus,
   RotateCcw,
   Send,
   Sparkles,
@@ -60,7 +61,13 @@ const SWIFT_FIN_TAG_NAMES: Record<string, string> = {
   ":77B:": "Regulatory Reporting",
 };
 
-const MACROS_LIST = [
+interface MacroItem {
+  title: string;
+  cmd: string;
+  desc?: string;
+}
+
+const DEFAULT_MACROS: MacroItem[] = [
   {
     title: "Check SBM Service",
     cmd: "sc query PaymentSafe",
@@ -111,6 +118,46 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<TabMode>("macros");
   const [copiedCmd, setCopiedCmd] = useState<string | null>(null);
+
+  // Custom Macros State
+  const [macros, setMacros] = useState<MacroItem[]>(() => {
+    try {
+      const stored = localStorage.getItem("herdr-web-ui:custom-macros");
+      return stored ? (JSON.parse(stored) as MacroItem[]) : DEFAULT_MACROS;
+    } catch {
+      return DEFAULT_MACROS;
+    }
+  });
+  const [addingMacro, setAddingMacro] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCmd, setNewCmd] = useState("");
+
+  const saveNewMacro = () => {
+    if (!newTitle.trim() || !newCmd.trim()) return;
+    const updated = [{ title: newTitle.trim(), cmd: newCmd.trim() }, ...macros];
+    setMacros(updated);
+    try {
+      localStorage.setItem("herdr-web-ui:custom-macros", JSON.stringify(updated));
+    } catch {}
+    setNewTitle("");
+    setNewCmd("");
+    setAddingMacro(false);
+  };
+
+  const deleteMacro = (idx: number) => {
+    const updated = macros.filter((_, i) => i !== idx);
+    setMacros(updated);
+    try {
+      localStorage.setItem("herdr-web-ui:custom-macros", JSON.stringify(updated));
+    } catch {}
+  };
+
+  const resetMacros = () => {
+    setMacros(DEFAULT_MACROS);
+    try {
+      localStorage.removeItem("herdr-web-ui:custom-macros");
+    } catch {}
+  };
 
   // Scratchpad state
   const [scratchpad, setScratchpad] = useState(() => {
@@ -254,10 +301,67 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
           <>
             <section>
               <div className="sidebar-section-title">
-                <span>⚡ Quick Command Macros</span>
+                <span>⚡ Quick Macros</span>
+                <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="scratchpad-btn"
+                    style={{ padding: "2px 6px", fontSize: "11px" }}
+                    onClick={() => setAddingMacro(!addingMacro)}
+                    title="Add Custom Macro"
+                  >
+                    <Plus size={11} />
+                    <span>Add</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    style={{ width: "20px", height: "20px" }}
+                    onClick={resetMacros}
+                    title="Reset to Defaults"
+                  >
+                    <RotateCcw size={11} />
+                  </button>
+                </div>
               </div>
+
+              {addingMacro && (
+                <div className="add-macro-form">
+                  <input
+                    className="macro-input"
+                    placeholder="Judul (misal: Ping Server BJB)"
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
+                  <input
+                    className="macro-input"
+                    placeholder="Command (misal: ping 10.10.20.1)"
+                    value={newCmd}
+                    onChange={(e) => setNewCmd(e.target.value)}
+                    style={{ fontFamily: "var(--font-mono)" }}
+                  />
+                  <div className="macro-form-actions">
+                    <button
+                      type="button"
+                      className="scratchpad-btn"
+                      onClick={() => setAddingMacro(false)}
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      className="scratchpad-btn scratchpad-btn-primary"
+                      onClick={saveNewMacro}
+                      disabled={!newTitle.trim() || !newCmd.trim()}
+                    >
+                      Simpan
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="macro-grid">
-                {MACROS_LIST.map((m, idx) => (
+                {macros.map((m, idx) => (
                   <div className="macro-card" key={idx} onClick={() => sendMacroToComposer(m.cmd)}>
                     <div className="macro-card-info">
                       <span className="macro-card-title">{m.title}</span>
@@ -265,7 +369,7 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
                         {m.cmd}
                       </span>
                     </div>
-                    <div style={{ display: "flex", gap: "4px" }}>
+                    <div style={{ display: "flex", gap: "2px", alignItems: "center" }}>
                       <button
                         type="button"
                         className="icon-button macro-card-action"
@@ -275,7 +379,18 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
                           copyMacro(m.cmd);
                         }}
                       >
-                        {copiedCmd === m.cmd ? <Check size={14} color="#4ade80" /> : <Copy size={14} />}
+                        {copiedCmd === m.cmd ? <Check size={14} color="#4ade80" /> : <Copy size={13} />}
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-button macro-card-action"
+                        title="Delete Macro"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMacro(idx);
+                        }}
+                      >
+                        <Trash2 size={13} />
                       </button>
                       <button
                         type="button"
@@ -286,7 +401,7 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
                           sendMacroToComposer(m.cmd);
                         }}
                       >
-                        <Play size={14} />
+                        <Play size={13} />
                       </button>
                     </div>
                   </div>
