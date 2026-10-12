@@ -1,0 +1,79 @@
+.webcam-modal {
+  width: min(100%, 540px);
+}
+
+.webcam-preview-container {
+  position: relative;
+  width: 100%;
+  background: #09090b;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 280px;
+  border: var(--hairline) solid var(--border);
+}
+
+.webcam-video-element {
+  width: 100%;
+  max-height: 380px;
+  object-fit: contain;
+  display: block;
+}
+
+.webcam-error-box {
+  padding: var(--space-4);
+  color: var(--status-blocked);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+
+.webcam-loading-box {
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.webcam-btn-snap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.webcam-btn-snap:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.webcam-btn-snap:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.webcam-btn-cancel {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-sm);
+  border: var(--hairline) solid var(--border);
+  cursor: pointer;
+}
+
+.webcam-btn-cancel:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}

@@ -47,6 +47,7 @@ import { composerUsage, formatPercent, formatResetIn, HIGH_PERCENT, meterPercent
 import { AgentMark } from "./AgentMark.tsx";
 import { BackgroundTasks } from "./BackgroundTasks.tsx";
 import { MicButton, VoiceRecordingPill, useDictation } from "./VoiceInput.tsx";
+import { WebcamModal } from "./WebcamModal.tsx";
 import { useT } from "../lib/i18n.ts";
 import { modalOpen } from "../lib/focus.ts";
 
@@ -262,6 +263,7 @@ export function Composer({
   }, [autoFocus]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const [webcamOpen, setWebcamOpen] = useState(false);
   const attachmentsRef = useRef<Attachment[]>([]);
   const removedAttachments = useRef(new Set<number>());
   const fileRequest = useRef(0);
@@ -1047,7 +1049,13 @@ export function Composer({
             aria-label={t("Take photo")}
             title={t("Take photo")}
             disabled={!connected || uploading}
-            onClick={() => cameraInputRef.current?.click()}
+            onClick={() => {
+              if (typeof navigator !== "undefined" && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                cameraInputRef.current?.click();
+              } else {
+                setWebcamOpen(true);
+              }
+            }}
           >
             <Camera aria-hidden="true" />
           </button>
@@ -1145,6 +1153,15 @@ export function Composer({
       )}
       {/* above the whole composer: inside the surface it would cover the text being dictated */}
       {dictation.shown && <VoiceRecordingPill dictation={dictation} align="start" />}
+      {webcamOpen && (
+        <WebcamModal
+          onCapture={(file) => {
+            setWebcamOpen(false);
+            void uploadImages([file]);
+          }}
+          onClose={() => setWebcamOpen(false)}
+        />
+      )}
     </div>
   );
 }
