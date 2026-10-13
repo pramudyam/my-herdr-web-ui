@@ -1497,8 +1497,8 @@ button {
   /* Right sidebar header alignment: extends the right pane border up through the header */
   .app.has-right-sidebar .header-meta {
     display: flex;
-    flex: 0 0 340px;
-    width: 340px;
+    flex: 0 0 var(--right-sidebar-w, 380px);
+    width: var(--right-sidebar-w, 380px);
     box-sizing: border-box;
     align-items: center;
     align-self: stretch;

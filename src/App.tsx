@@ -265,6 +265,30 @@ export function App() {
     });
   }, []);
 
+  const DEFAULT_RIGHT_SIDEBAR_WIDTH = 380;
+  const [rightSidebarWidth, setRightSidebarWidth] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem("herdr-web-ui:right-sidebar-width");
+      return stored ? Math.max(280, parseInt(stored, 10)) : DEFAULT_RIGHT_SIDEBAR_WIDTH;
+    } catch {
+      return DEFAULT_RIGHT_SIDEBAR_WIDTH;
+    }
+  });
+
+  const onResizeRightSidebar = useCallback((w: number) => {
+    setRightSidebarWidth(w);
+    try {
+      localStorage.setItem("herdr-web-ui:right-sidebar-width", String(w));
+    } catch {}
+  }, []);
+
+  const onResetRightSidebarWidth = useCallback(() => {
+    setRightSidebarWidth(DEFAULT_RIGHT_SIDEBAR_WIDTH);
+    try {
+      localStorage.removeItem("herdr-web-ui:right-sidebar-width");
+    } catch {}
+  }, []);
+
   const insertPromptIntoComposer = useCallback((promptText: string) => {
     if (selectedPaneId) {
       const draftKey = `herdr-web-ui:composer-draft:${paneStorageId(selectedMachineId, selectedPaneId)}`;
@@ -1055,7 +1079,7 @@ export function App() {
   if (locked) return <AccessGate reason={lockReason} initialCode={pairCode} onUnlocked={unlock} />;
 
   return (
-    <MachineSessionsProvider machineIds={machines.map((machine) => machine.id)}><MachineContext.Provider value={selectedMachineId}><div className={`app${sidebarCollapsed ? " sidebar-collapsed" : ""}${rightPanelOpen ? " has-right-sidebar" : ""}`} style={sidebarWidth === null ? undefined : { "--sidebar-user-w": `${sidebarWidth}px` } as CSSProperties}>
+    <MachineSessionsProvider machineIds={machines.map((machine) => machine.id)}><MachineContext.Provider value={selectedMachineId}><div className={`app${sidebarCollapsed ? " sidebar-collapsed" : ""}${rightPanelOpen ? " has-right-sidebar" : ""}`} style={{ ...(sidebarWidth === null ? {} : { "--sidebar-user-w": `${sidebarWidth}px` }), "--right-sidebar-w": `${rightSidebarWidth}px` } as CSSProperties}>
       <header className={`app-header is-zoned${chatShown ? " is-chat" : ""}`}>
         {/* is-zoned tells this header from the connecting shell's, which has no zones to draw.
             .header-side is the sidebar's own top row from 769px (styles.css); below that its
@@ -1257,7 +1281,10 @@ export function App() {
 
         <RightSidebar
           open={rightPanelOpen}
+          width={rightSidebarWidth}
           onClose={() => setRightPanelOpen(false)}
+          onResize={onResizeRightSidebar}
+          onResetWidth={onResetRightSidebarWidth}
           onInsertPrompt={insertPromptIntoComposer}
         />
         {rightPanelOpen && <div className="scrim right-scrim" aria-hidden="true" onClick={() => setRightPanelOpen(false)} />}

@@ -1,0 +1,40 @@
+/* The right sidebar's left edge grip: drag it left to expand, right to shrink */
+.right-sidebar-resizer {
+  position: absolute;
+  top: 0;
+  left: calc(var(--space-1) * -1);
+  bottom: 0;
+  z-index: 20;
+  display: none;
+  width: var(--space-2);
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.right-sidebar-resizer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - var(--hairline));
+  width: calc(var(--hairline) * 2);
+  background: transparent;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+
+.right-sidebar-resizer:focus-visible { outline: none; }
+
+@media (hover: hover) {
+  .right-sidebar-resizer:hover::after { background: var(--border-strong); }
+}
+
+.right-sidebar-resizer.is-dragging::after,
+.right-sidebar-resizer:focus-visible::after { background: var(--accent); }
+
+@media (min-width: 769px) {
+  .right-sidebar-resizer { display: block; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .right-sidebar-resizer::after { transition: none; }
+}

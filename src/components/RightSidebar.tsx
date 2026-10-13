@@ -19,13 +19,17 @@ import {
 } from "lucide-react";
 
 import "./RightSidebar.css";
+import { RightSidebarResizer } from "./RightSidebarResizer.tsx";
 import { useT } from "../lib/i18n.ts";
 import { useSettings } from "../lib/settings.ts";
 import { HIGH_PERCENT, meterPercent, meterText, useUsage, windowLabel, formatResetIn } from "../lib/usage.ts";
 
 export interface RightSidebarProps {
   open: boolean;
+  width: number;
   onClose: () => void;
+  onResize: (width: number) => void;
+  onResetWidth: () => void;
   onInsertPrompt: (text: string) => void;
 }
 
@@ -267,7 +271,7 @@ const BUILTIN_SAMPLES: SwiftSample[] = [
   },
 ];
 
-export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProps) {
+export function RightSidebar({ open, width, onClose, onResize, onResetWidth, onInsertPrompt }: RightSidebarProps) {
   const t = useT();
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<TabMode>("macros");
@@ -564,7 +568,12 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
   if (!open) return null;
 
   return (
-    <aside className={`right-sidebar${open ? " is-open" : ""}`} aria-label="Toolbox & Inspector">
+    <aside
+      className={`right-sidebar${open ? " is-open" : ""}`}
+      style={{ "--right-sidebar-w": `${width}px` } as React.CSSProperties}
+      aria-label="Toolbox & Inspector"
+    >
+      <RightSidebarResizer onResize={onResize} onReset={onResetWidth} />
       {/* Header & Tabs */}
       <div className="right-sidebar-header">
         <div className="right-sidebar-tabs" role="tablist">

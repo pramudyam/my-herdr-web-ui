@@ -2,15 +2,14 @@
 .right-sidebar {
   display: flex;
   flex-direction: column;
-  width: 340px;
-  min-width: 300px;
-  max-width: 420px;
+  width: var(--right-sidebar-w, 380px);
+  min-width: 280px;
+  max-width: min(900px, 70vw);
   background: var(--bg-panel);
   border-left: var(--hairline) solid var(--border);
   height: 100%;
   overflow: hidden;
   position: relative;
-  transition: width 0.2s ease, transform 0.2s ease;
   z-index: 10;
 }
 
