@@ -106,6 +106,40 @@ const SWIFT_FIN_TAG_NAMES: Record<string, string> = {
   ":87D:": "Party B (Name & Address)",
 };
 
+const ISO_ELEMENT_NAMES: Record<string, string> = {
+  MsgId: "Message Identification",
+  CreDtTm: "Creation Date & Time",
+  NbOfTxs: "Number of Transactions",
+  SttlmMtd: "Settlement Method",
+  ClrSys: "Clearing System",
+  InstrId: "Instruction ID",
+  EndToEndId: "End-to-End Reference",
+  UETR: "Unique Transaction Reference (UETR)",
+  TxId: "Transaction Identification",
+  IntrBkSttlmAmt: "Interbank Settlement Amount",
+  InstdAmt: "Instructed Amount",
+  IntrBkSttlmDt: "Interbank Settlement Date",
+  ChrgBr: "Charge Bearer (OUR/BEN/SHA)",
+  BICFI: "Financial Institution BIC",
+  Nm: "Party Name",
+  Id: "Account / Identifier",
+  IBAN: "IBAN Account Number",
+  Ustrd: "Remittance Info (Unstructured)",
+  StsId: "Status Identification",
+  OrgnlMsgId: "Original Message ID",
+  OrgnlEndToEndId: "Original End-to-End ID",
+  OrgnlUETR: "Original UETR",
+  TxSts: "Transaction Status Code",
+  Rsn: "Status Reason",
+  Cd: "Code Value",
+  Prtry: "Proprietary Value",
+  BizMsgIdr: "Business Message Identifier",
+  MsgDefIdr: "Message Definition (Type)",
+  BizSvc: "Business Service",
+  SenderReference: "SAA Sender Reference",
+  MessageIdentifier: "SAA Message Identifier",
+};
+
 interface MacroItem {
   title: string;
   cmd: string;
@@ -182,6 +216,36 @@ interface SwiftSample {
   builtIn?: boolean;
 }
 
+const SAMPLE_PACS008 = `<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:pacs.008.001.08">
+  <FIToFICstmrCdtTrf>
+    <GrpHdr>
+      <MsgId>MSGID-PACS008-01</MsgId>
+      <CreDtTm>2026-03-24T11:06:36+07:00</CreDtTm>
+      <NbOfTxs>1</NbOfTxs>
+      <SttlmInf><SttlmMtd>INDA</SttlmMtd></SttlmInf>
+    </GrpHdr>
+    <CdtTrfTxInf>
+      <PmtId>
+        <InstrId>INSTR-008-01</InstrId>
+        <EndToEndId>E2E-REF-001</EndToEndId>
+        <UETR>99bbcaab-8e7b-47f6-be00-f46b4b1f52a7</UETR>
+      </PmtId>
+      <IntrBkSttlmAmt Ccy="USD">1500000.00</IntrBkSttlmAmt>
+      <IntrBkSttlmDt>2026-03-24</IntrBkSttlmDt>
+      <ChrgBr>DEBT</ChrgBr>
+      <InstgAgt><FinInstnId><BICFI>BNPAIDJAXXX</BICFI></FinInstnId></InstgAgt>
+      <InstdAgt><FinInstnId><BICFI>BKTRUS33XXX</BICFI></InstdAgt>
+      <Dbtr><Nm>PT VENTURIUM SYSTEM INDONESIA</Nm></Dbtr>
+      <DbtrAcct><Id><Othr><Id>1234567890</Id></Othr></Id></DbtrAcct>
+      <CdtrAgt><FinInstnId><BICFI>BMRIIDJAXXX</BICFI></FinInstnId></CdtrAgt>
+      <Cdtr><Nm>BANK SUMUT MEDAN</Nm></Cdtr>
+      <CdtrAcct><Id><Othr><Id>9876543210</Id></Othr></Id></CdtrAcct>
+      <RmtInf><Ustrd>PAYMENT INVOICE INTEGRATION</Ustrd></RmtInf>
+    </CdtTrfTxInf>
+  </FIToFICstmrCdtTrf>
+</Document>`;
+
 const BUILTIN_SAMPLES: SwiftSample[] = [
   {
     id: "builtin-mt103",
@@ -193,6 +257,12 @@ const BUILTIN_SAMPLES: SwiftSample[] = [
     id: "builtin-mt300",
     name: "MT300 (Foreign Exchange Confirmation)",
     raw: SAMPLE_MT300,
+    builtIn: true,
+  },
+  {
+    id: "builtin-pacs008",
+    name: "pacs.008 (ISO 20022 Customer Transfer)",
+    raw: SAMPLE_PACS008,
     builtIn: true,
   },
 ];
@@ -321,19 +391,111 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
     const raw = swiftRaw.trim();
     if (!raw) return { messageType: null, senderBic: null, receiverBic: null, tags: [] };
 
-    // Detect MT message type from Block 2
+    // 1. Check if XML / ISO 20022 MX format
+    const isXml =
+      raw.startsWith("<") ||
+      raw.includes("<?xml") ||
+      raw.includes("<Document") ||
+      raw.includes("<DataPDU") ||
+      raw.includes("<AppHdr");
+
+    if (isXml) {
+      let messageType: string | null = null;
+      let senderBic: string | null = null;
+      let receiverBic: string | null = null;
+      const tags: { code: string; name: string; val: string }[] = [];
+
+      // Detect MX Type
+      const defMatch =
+        raw.match(/<MsgDefIdr>([^<]+)<\/MsgDefIdr>/i) ||
+        raw.match(/<MessageIdentifier>([^<]+)<\/MessageIdentifier>/i) ||
+        raw.match(/xmlns[^=]*=["'][^"']*(pacs\.\d{3}\.\d{3}\.\d{2}|camt\.\d{3}\.\d{3}\.\d{2}|pain\.\d{3}\.\d{3}\.\d{2})/i) ||
+        raw.match(/(pacs\.\d{3}\.\d{3}\.\d{2}|camt\.\d{3}\.\d{3}\.\d{2}|pain\.\d{3}\.\d{3}\.\d{2})/i);
+
+      if (defMatch) {
+        const id = defMatch[1]!;
+        if (id.includes("pacs.008")) messageType = `${id} — FI to FI Customer Credit Transfer`;
+        else if (id.includes("pacs.009")) messageType = `${id} — Financial Institution Credit Transfer`;
+        else if (id.includes("pacs.002")) messageType = `${id} — Payment Status Report`;
+        else if (id.includes("camt.053")) messageType = `${id} — Bank-to-Customer Statement`;
+        else if (id.includes("camt.054")) messageType = `${id} — Debit/Credit Notification`;
+        else if (id.includes("pain.001")) messageType = `${id} — Customer Credit Transfer Initiation`;
+        else messageType = `${id} — ISO 20022 MX Message`;
+      } else {
+        messageType = "ISO 20022 MX XML Message";
+      }
+
+      // Try DOMParser in browser
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(raw, "application/xml");
+        const parseError = doc.querySelector("parsererror");
+
+        if (!parseError) {
+          const walk = (node: Element, parentPath: string = "") => {
+            const localName = node.localName || node.nodeName.replace(/^[a-zA-Z0-9_]+:/, "");
+            const isRootWrapper = ["DataPDU", "Header", "Body", "Document", "FIToFICstmrCdtTrf", "FICdtTrf"].includes(localName);
+            const currentPath = isRootWrapper ? "" : parentPath ? `${parentPath} / ${localName}` : localName;
+
+            const children = Array.from(node.children);
+            if (children.length === 0) {
+              const textVal = (node.textContent || "").trim();
+              if (textVal.length > 0) {
+                let displayVal = textVal;
+                const ccyAttr = node.getAttribute("Ccy");
+                if (ccyAttr) displayVal = `${ccyAttr} ${textVal}`;
+
+                const fieldName = ISO_ELEMENT_NAMES[localName] ?? (parentPath ? `${localName} (${parentPath.split(" / ").pop()})` : "ISO 20022 Element");
+                tags.push({
+                  code: `<${currentPath || localName}>`,
+                  name: fieldName,
+                  val: displayVal,
+                });
+
+                if (localName === "BICFI" || localName === "X1") {
+                  if (!senderBic) senderBic = textVal;
+                  else if (!receiverBic && textVal !== senderBic) receiverBic = textVal;
+                }
+              }
+            } else {
+              for (const child of children) {
+                walk(child, currentPath);
+              }
+            }
+          };
+
+          walk(doc.documentElement);
+        }
+      } catch {}
+
+      // Fallback regex if DOMParser yielded 0 tags (e.g. malformed fragment)
+      if (tags.length === 0) {
+        const leafRegex = /<([a-zA-Z0-9_:-]+)([^>]*)>([^<]+)<\/\1>/g;
+        let m;
+        while ((m = leafRegex.exec(raw)) !== null) {
+          const rawTag = m[1]!.replace(/^[a-zA-Z0-9_]+:/, "");
+          const attrs = m[2]!;
+          let val = m[3]!.trim();
+          const ccy = attrs.match(/Ccy=["']([^"']+)["']/i);
+          if (ccy) val = `${ccy[1]} ${val}`;
+          tags.push({
+            code: `<${rawTag}>`,
+            name: ISO_ELEMENT_NAMES[rawTag] ?? "ISO 20022 Element",
+            val,
+          });
+        }
+      }
+
+      return { messageType, senderBic, receiverBic, tags };
+    }
+
+    // 2. FIN MT Parser (100% untouched & isolated)
     let messageType: string | null = null;
     const mtMatch = raw.match(/\{2:[IO](\d{3})/i);
     if (mtMatch) {
       const code = "MT" + mtMatch[1];
       const name = SWIFT_MT_NAMES[code] ?? "SWIFT Financial Message";
       messageType = `${code} — ${name}`;
-    } else if (raw.includes("pacs.008")) {
-      messageType = "pacs.008 — FI to FI Customer Credit Transfer";
-    } else if (raw.includes("pacs.009")) {
-      messageType = "pacs.009 — Financial Institution Credit Transfer";
-    } else if (raw.includes("camt.053")) {
-      messageType = "camt.053 — Bank-to-Customer Statement";
     }
 
     // Detect Sender BIC from Block 1
@@ -357,21 +519,6 @@ export function RightSidebar({ open, onClose, onInsertPrompt }: RightSidebarProp
         code,
         name,
         val: val.length > 0 ? val : "(Sequence delimiter / Marker)",
-      });
-    }
-
-    if (tags.length > 0) {
-      return { messageType, senderBic, receiverBic, tags };
-    }
-
-    // XML / MX Fallback Detection
-    const xmlRegex = /<([a-zA-Z0-9]+)>([^<]+)<\/\1>/g;
-    let xmlMatch;
-    while ((xmlMatch = xmlRegex.exec(raw)) !== null) {
-      tags.push({
-        code: `<${xmlMatch[1]}>`,
-        name: "ISO 20022 Element",
-        val: xmlMatch[2]!.trim(),
       });
     }
 
