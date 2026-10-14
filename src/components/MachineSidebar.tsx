@@ -44,7 +44,12 @@ export function MachineSidebar(props: Props) {
       await fetch("/api/user/logout", { method: "POST" });
     } catch {}
     try {
-      localStorage.removeItem("herdr-web-ui:current-user");
+      for (const k of Object.keys(localStorage)) {
+        if (k.startsWith("herdr-web-ui:")) localStorage.removeItem(k);
+      }
+      for (const k of Object.keys(sessionStorage)) {
+        if (k.startsWith("herdr-web-ui:")) sessionStorage.removeItem(k);
+      }
     } catch {}
     window.location.reload();
   };

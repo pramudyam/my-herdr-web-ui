@@ -71,10 +71,14 @@ export function filterSnapshotForUser(snapshot: SessionSnapshot, username: strin
     // If not logged in, show empty session
     return {
       ...snapshot,
+      focused_workspace_id: "" as any,
+      focused_tab_id: "" as any,
+      focused_pane_id: "" as any,
       workspaces: [],
       tabs: [],
       panes: [],
       agents: [],
+      layouts: [],
     };
   }
 
@@ -91,13 +95,29 @@ export function filterSnapshotForUser(snapshot: SessionSnapshot, username: strin
 
   const userPanes = snapshot.panes.filter((p) => allowedTabIds.has(p.tab_id));
   const userAgents = (snapshot.agents ?? []).filter((a) => allowedWsIds.has(a.workspace_id));
+  const userLayouts = (snapshot.layouts ?? []).filter((l) => allowedWsIds.has(l.workspace_id));
+
+  const firstWs = userWorkspaces[0];
+  const firstTab = userTabs.find((t) => t.workspace_id === firstWs?.workspace_id);
+  const firstPane = userPanes.find((p) => p.tab_id === firstTab?.tab_id);
 
   return {
     ...snapshot,
+    focused_workspace_id: allowedWsIds.has(snapshot.focused_workspace_id)
+      ? snapshot.focused_workspace_id
+      : (firstWs?.workspace_id ?? ("" as any)),
+    focused_tab_id: allowedTabIds.has(snapshot.focused_tab_id)
+      ? snapshot.focused_tab_id
+      : (firstTab?.tab_id ?? ("" as any)),
+    focused_pane_id:
+      snapshot.focused_pane_id && userPanes.some((p) => p.pane_id === snapshot.focused_pane_id)
+        ? snapshot.focused_pane_id
+        : (firstPane?.pane_id ?? ("" as any)),
     workspaces: userWorkspaces,
     tabs: userTabs,
     panes: userPanes,
     agents: userAgents,
+    layouts: userLayouts,
   };
 }
 
@@ -251,6 +271,7 @@ export async function handleUserRequest(request: Request, pathname: string, serv
     const headers = new Headers();
     headers.append("Set-Cookie", `${USER_COOKIE}=; Path=/; SameSite=Strict; HttpOnly; Max-Age=0`);
     headers.append("Set-Cookie", `${TOKEN_COOKIE}=; Path=/; SameSite=Strict; HttpOnly; Max-Age=0`);
+    headers.append("Set-Cookie", `herdr_web_device=; Path=/; SameSite=Strict; HttpOnly; Max-Age=0`);
     headers.set("Content-Type", "application/json");
 
     return new Response(JSON.stringify({ success: true }), { status: 200, headers });
