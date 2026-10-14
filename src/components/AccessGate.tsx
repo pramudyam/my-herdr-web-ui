@@ -7,7 +7,6 @@ import { deviceLabel } from "../lib/phone.ts";
 import type { AccessRefusal } from "../../shared/protocol.ts";
 import { useT } from "../lib/i18n.ts";
 
-
 export interface AccessGateProps {
   /** why the server refused this browser, when it said */
   reason: AccessRefusal | null;
@@ -17,22 +16,44 @@ export interface AccessGateProps {
   onUnlocked: () => void;
 }
 
-/**
- * Sign-in screen rendered instead of the shell while the server does not know this
- * browser. Pairing is the usual way in: a six-digit code the owner started on the PC
- * (Settings → Devices), typed once, or carried by the QR code's address. The shared
- * token stays as the other way. Nothing is stored here: the server answers with an
- * HttpOnly cookie either way.
- */
 export function AccessGate({ reason, initialCode, onUnlocked }: AccessGateProps) {
   const t = useT();
   const codeRef = useRef<HTMLInputElement | null>(null);
   const tokenRef = useRef<HTMLInputElement | null>(null);
   const [code, setCode] = useState(initialCode);
   const [token, setToken] = useState("");
-  const [submitting, setSubmitting] = useState<"code" | "token" | null>(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState<"login" | "code" | "token" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const scanned = useRef(code.length === 6);
+
+  const submitUserLogin = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    if (submitting) return;
+    if (!username.trim()) return;
+    setSubmitting("login");
+    setError(null);
+    try {
+      const res = await fetch("/api/user/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error?.message || "Login gagal");
+      }
+      const data = await res.json();
+      try {
+        localStorage.setItem("herdr-web-ui:current-user", JSON.stringify(data.user));
+      } catch {}
+      onUnlocked();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setSubmitting(null);
+    }
+  };
 
   const pair = async (value: string): Promise<void> => {
     if (submitting) return;
@@ -75,62 +96,92 @@ export function AccessGate({ reason, initialCode, onUnlocked }: AccessGateProps)
 
   return (
     <main className="access-gate-screen">
-      <div className="access-gate" data-testid="token-gate">
-        <img src="/icons/icon-192.png?v=ram1" alt="" width="44" height="44" className="access-gate-mark" />
+      <div className="access-gate" data-testid="token-gate" style={{ width: "min(100%, 380px)" }}>
+        <img src="/icons/icon-192.png?v=ram1" alt="" width="48" height="48" className="access-gate-mark" />
         <h1 id="access-gate-title" className="access-gate-title">
-          herdr <span className="brand-sub">web ui</span>
+          Vensys AI <span className="brand-sub">Korwil 1</span>
         </h1>
-        {reason === "other_user" && (
-          <p className="access-gate-refused" role="status">{t("Tailscale says this device belongs to someone other than this PC's owner. The owner can still let it in with a pairing code.")}</p>
-        )}
-        <p className="access-gate-copy">
-          {t(reason === "token_required" ? "This server requires an access token or a pairing code." : "Pair this device with a code from the PC: Settings → Devices there, or the pair command in its terminal.")}
+        <p className="access-gate-copy" style={{ marginBottom: "16px" }}>
+          Knowledge Base & Technical Assistant Perbankan
         </p>
-        <form aria-labelledby="access-gate-title" onSubmit={submitCode}>
-          <label className="access-gate-label" htmlFor="access-gate-code">{t("Pairing code")}</label>
-          <input
-            ref={codeRef}
-            id="access-gate-code"
-            className="access-gate-input"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            pattern="[0-9]*"
-            maxLength={7}
-            placeholder="000 000"
-            autoFocus
-            aria-invalid={error !== null && submitting !== "token"}
-            aria-describedby={error !== null ? "access-gate-error" : undefined}
-            value={code}
-            onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
-          />
-          <button type="submit" className="access-gate-submit" disabled={submitting !== null}>
-            {t(submitting === "code" ? "Pairing…" : "Pair this device")}
+
+        {/* Multi-User Login Form */}
+        <form onSubmit={(e) => void submitUserLogin(e)} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          <div>
+            <label className="access-gate-label" htmlFor="access-gate-user">Username</label>
+            <input
+              id="access-gate-user"
+              className="access-gate-input"
+              type="text"
+              placeholder="Masukkan username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoFocus
+              required
+            />
+          </div>
+
+          <div>
+            <label className="access-gate-label" htmlFor="access-gate-pass">Password</label>
+            <input
+              id="access-gate-pass"
+              className="access-gate-input"
+              type="password"
+              placeholder="Masukkan password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <p style={{ margin: "6px 0 0", fontSize: "11px", color: "var(--text-dim)", lineHeight: 1.4 }}>
+              *Jika username baru, akun akan otomatis dibuat dengan password ini.
+            </p>
+          </div>
+
+          <button type="submit" className="access-gate-submit" style={{ width: "100%", marginTop: "4px" }} disabled={submitting !== null}>
+            {submitting === "login" ? "Memproses…" : "Masuk / Buat Akun"}
           </button>
         </form>
-        <details className="access-gate-alt">
-          <summary>{t("Have an access token instead?")}</summary>
-          <form onSubmit={(event) => void submitToken(event)}>
+
+        {error !== null && (
+          <p id="access-gate-error" className="access-gate-error" role="alert">{error}</p>
+        )}
+
+        {/* Collapsible Alternative Pairing / Token Login */}
+        <details className="access-gate-alt" style={{ marginTop: "20px", borderTop: "var(--hairline) solid var(--border)", paddingTop: "12px" }}>
+          <summary style={{ fontSize: "11px", color: "var(--text-dim)", cursor: "pointer" }}>Opsi Lain: Pairing Code / Token Herdr</summary>
+          <form style={{ marginTop: "10px" }} onSubmit={submitCode}>
+            <label className="access-gate-label" htmlFor="access-gate-code">{t("Pairing code")}</label>
+            <input
+              ref={codeRef}
+              id="access-gate-code"
+              className="access-gate-input"
+              type="text"
+              inputMode="numeric"
+              maxLength={7}
+              placeholder="000 000"
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+            />
+            <button type="submit" className="access-gate-submit" style={{ width: "100%" }} disabled={submitting !== null}>
+              {submitting === "code" ? "Pairing…" : "Pair this device"}
+            </button>
+          </form>
+
+          <form style={{ marginTop: "10px" }} onSubmit={(event) => void submitToken(event)}>
             <label className="access-gate-label" htmlFor="access-gate-token">{t("Access token")}</label>
             <input
               ref={tokenRef}
               id="access-gate-token"
               className="access-gate-input"
               type="password"
-              name="token"
-              autoComplete="current-password"
-              inputMode="text"
               value={token}
               onChange={(event) => setToken(event.target.value)}
             />
-            <button type="submit" className="access-gate-submit" disabled={submitting !== null}>
-              {t(submitting === "token" ? "Unlocking…" : "Unlock")}
+            <button type="submit" className="access-gate-submit" style={{ width: "100%" }} disabled={submitting !== null}>
+              {submitting === "token" ? "Unlocking…" : "Unlock with Token"}
             </button>
           </form>
         </details>
-        {error !== null && (
-          <p id="access-gate-error" className="access-gate-error" role="alert">{error}</p>
-        )}
       </div>
     </main>
   );

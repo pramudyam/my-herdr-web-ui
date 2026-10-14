@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Download, Monitor, Plus, Settings, SlidersHorizontal, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronDown, ChevronRight, Download, LogOut, Monitor, Plus, Settings, SlidersHorizontal, Trash2, User, Users, X } from "lucide-react";
 import type { Machine, MachineState, MachineUpdate } from "../../shared/machines.ts";
 import { MachineContext } from "../lib/machineContext.tsx";
 import { answerMachineSetup, machineRequest } from "../lib/api.ts";
@@ -28,6 +29,25 @@ export function MachineSidebar(props: Props) {
   const t = useT();
   const { canInstall, installed, install, help } = useInstallPrompt();
   const [installHelpOpen, setInstallHelpOpen] = useState(false);
+  const [currentUser] = useState<{ username: string; name: string; role: string; isAdmin?: boolean } | null>(() => {
+    try {
+      const s = localStorage.getItem("herdr-web-ui:current-user");
+      return s ? (JSON.parse(s) as { username: string; name: string; role: string; isAdmin?: boolean }) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [userModalOpen, setUserModalOpen] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/user/logout", { method: "POST" });
+    } catch {}
+    try {
+      localStorage.removeItem("herdr-web-ui:current-user");
+    } catch {}
+    window.location.reload();
+  };
   // both lists draw from it: live counters per PC and the finishes looked at here (lib/sidebarActivity.tsx)
   const activity = useSidebarActivityState(props.machines, props.selectedMachineId, props.selectedPaneId);
   // no top bar: a workspace starts from its PC's header, and Add PC lives in Settings → Remote PCs
@@ -41,11 +61,55 @@ export function MachineSidebar(props: Props) {
       {/* browsers without an install prompt (iOS, plain HTTP) get the steps instead */}
       {!installed && <button className="btn btn-ghost sidebar-footer-action" aria-expanded={canInstall ? undefined : installHelpOpen} onClick={() => { if (canInstall) void install(); else setInstallHelpOpen(!installHelpOpen); }}><Download aria-hidden="true" />{t("Install app")}</button>}
       {!installed && !canInstall && installHelpOpen && <p className="sidebar-install-help" role="status">{help}</p>}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "6px var(--space-3)",
+          borderTop: "var(--hairline) solid var(--border)",
+          fontSize: "var(--fs-xs)",
+          background: "var(--bg-hover)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+          <User size={13} color="var(--accent)" />
+          <span style={{ fontWeight: "var(--fw-medium)", color: "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
+            {currentUser?.name ?? "Priyo Pramudya"}
+          </span>
+          <span style={{ fontSize: "10px", padding: "1px 5px", borderRadius: "var(--radius-pill)", background: "var(--bg-input)", color: "var(--text-dim)" }}>
+            {currentUser?.role === "admin" ? "Admin" : "Engineer"}
+          </span>
+        </div>
+        <div style={{ display: "flex", gap: "2px" }}>
+          {currentUser?.username?.toLowerCase() === "priyo" && (
+            <button
+              type="button"
+              className="icon-button"
+              style={{ width: "22px", height: "22px" }}
+              title="Kelola & Hapus Akun Tim (Admin)"
+              onClick={() => setUserModalOpen(true)}
+            >
+              <Users size={13} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="icon-button"
+            style={{ width: "22px", height: "22px" }}
+            title="Ganti Akun / Logout"
+            onClick={() => void handleLogout()}
+          >
+            <LogOut size={13} />
+          </button>
+        </div>
+      </div>
       <div className="sidebar-footer-row">
         <button className="btn btn-ghost sidebar-footer-action" title={t("Settings (⌘⇧,)")} onClick={props.actions.openSettings}><Settings aria-hidden="true" />{t("Settings")}</button>
         <UsageMeters />
       </div>
     </footer>
+    {userModalOpen && <UserManagementModal onClose={() => setUserModalOpen(false)} />}
   </div></SidebarActivityProvider>;
 }
 
@@ -202,4 +266,118 @@ export function MachineActionBanner({ machines, onSetup }: { machines: Machine[]
     <button type="button" className="btn" onClick={() => update ? void machineRequest(`/${encodeURIComponent(first.id)}/update-bridge`, "POST").catch(() => onSetup(first, true)) : onSetup(first, false)}>{t(conflict ? "Reconnect" : update ? "Update bridge" : "Set up…")}</button>
     <button type="button" className="icon-button update-notice-dismiss" aria-label={t("Dismiss")} title={t("Dismiss")} onClick={() => { const next = [...dismissed, ...waiting.map(noticeKey)]; setDismissed(next); writeDismissed(next); }}><X /></button>
   </div>;
+}
+
+interface ManagedUser {
+  username: string;
+  name: string;
+  createdAt: number;
+  isAdmin: boolean;
+}
+
+function UserManagementModal({ onClose }: { onClose: () => void }) {
+  const [users, setUsers] = useState<ManagedUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/user/all");
+      const data = await res.json();
+      setUsers(data.users || []);
+    } catch {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchUsers();
+  }, []);
+
+  const deleteUser = async (username: string) => {
+    if (!confirm(`Hapus akun "${username}" dan semua sesi miliknya?`)) return;
+    setDeleting(username);
+    try {
+      const res = await fetch("/api/user/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error?.message || "Gagal menghapus user");
+      await fetchUsers();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  return createPortal(
+    <div className="modal-scrim" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal" style={{ width: "min(100%, 480px)", maxHeight: "min(85vh, 600px)" }} role="dialog" aria-modal="true">
+        <div className="modal-header">
+          <Users aria-hidden="true" size={18} color="var(--accent)" />
+          <h2 className="modal-title">Kelola User Tim (Admin Priyo)</h2>
+          <button type="button" className="icon-button" onClick={onClose}><X size={16} /></button>
+        </div>
+        <div className="modal-body" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <p style={{ margin: "0 0 4px", fontSize: "var(--fs-xs)", color: "var(--text-dim)" }}>
+            Daftar akun tim yang tersimpan di server. Hapus akun testing/tidak terpakai agar database bersih:
+          </p>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "20px", color: "var(--text-dim)" }}>Memuat daftar user…</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              {users.map((u) => (
+                <div
+                  key={u.username}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "8px 12px",
+                    background: "var(--bg-hover)",
+                    borderRadius: "var(--radius-md)",
+                    border: "var(--hairline) solid var(--border)",
+                  }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <strong style={{ fontSize: "var(--fs-xs)", color: "var(--text-strong)" }}>{u.username}</strong>
+                      <span style={{ fontSize: "10px", padding: "1px 6px", borderRadius: "var(--radius-pill)", background: u.isAdmin ? "var(--accent)" : "var(--bg-input)", color: u.isAdmin ? "#181a13" : "var(--text-dim)", fontWeight: u.isAdmin ? "bold" : "normal" }}>
+                        {u.isAdmin ? "Admin Utama" : "User"}
+                      </span>
+                    </div>
+                    <span style={{ fontSize: "11px", color: "var(--text-dim)" }}>
+                      Dibuat: {new Date(u.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+
+                  {!u.isAdmin && (
+                    <button
+                      type="button"
+                      className="scratchpad-btn"
+                      style={{ color: "#f87171", borderColor: "#f87171", padding: "4px 8px", fontSize: "11px" }}
+                      disabled={deleting === u.username}
+                      onClick={() => void deleteUser(u.username)}
+                    >
+                      <Trash2 size={12} />
+                      <span>{deleting === u.username ? "Menghapus…" : "Hapus"}</span>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="modal-footer">
+          <button type="button" className="btn" onClick={onClose}>Tutup</button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
 }

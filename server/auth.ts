@@ -78,11 +78,11 @@ export function isAuthenticated(request: Request, token: string): boolean {
   return matches(authorization.slice(BEARER_PREFIX.length), token);
 }
 
-/** /api/health, /api/auth and /api/devices/pair stay open so a client can discover the gate and pass it. */
+/** /api/health, /api/auth, /api/devices/pair and /api/user stay open so a client can discover the gate and pass it. */
 export function requiresAuth(pathname: string): boolean {
   if (pathname === "/ws") return true;
   if (!pathname.startsWith("/api/")) return false;
-  return pathname !== "/api/health" && pathname !== "/api/auth" && pathname !== "/api/devices/pair";
+  return pathname !== "/api/health" && pathname !== "/api/auth" && pathname !== "/api/devices/pair" && !pathname.startsWith("/api/user");
 }
 
 export function unauthorizedJson(reason: "other_user" | "pairing_required" | "token_required" = "token_required"): Response {
@@ -95,7 +95,7 @@ export function isSecureRequest(request: Request): boolean {
   return new URL(request.url).protocol === "https:";
 }
 
-function sessionCookie(token: string, secure: boolean): string {
+export function sessionCookie(token: string, secure: boolean): string {
   const attributes = `Path=/; HttpOnly; SameSite=Strict; Max-Age=${COOKIE_MAX_AGE_SECONDS}`;
   return `${TOKEN_COOKIE}=${encodeURIComponent(token)}; ${attributes}${secure ? "; Secure" : ""}`;
 }

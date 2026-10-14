@@ -2,6 +2,7 @@ import type { SetupAction, SetupRequest } from "../shared/machines.ts";
 import { MachineManager } from "./machines.ts";
 import { canSendSecret, sameOrigin } from "./machine-security.ts";
 import { isJsonObject, jsonResponse } from "./http.ts";
+import { filterSnapshotForUser, getUserFromRequest } from "./users.ts";
 
 const fail = (code: string, message: string, status: number) => jsonResponse({ error: { code, message } }, status);
 export const MACHINE_PROXY_PATH = /^(?:session|agents|integrations|pane\/(?:read|scroll|find|selection|conversation(?:\/image|\/tool-output)?|commands|files|omo-tasks|prompt|prompt\/answer|input|keys|close|rename|image|split|zoom|swap|resize|clear|move|focus)|workspace\/(?:create|rename|move|close|directories)|worktree\/(?:create|list|open|remove)|tab\/(?:create|rename|close|move)|layout\/ratio|agent\/rename|plugins\/actions|plugin\/action|fs\/(?:stat|file))$/;
@@ -33,7 +34,17 @@ export async function handleMachineRequest(request: Request, manager: MachineMan
   if (url.pathname.includes("//")) return fail("not_found", "not found", 404);
   const parts = url.pathname.slice("/api/machines".length).split("/").filter(Boolean);
   try {
-    if (!parts.length && request.method === "GET") return jsonResponse({ machines: manager.list() });
+    if (!parts.length && request.method === "GET") {
+      const user = getUserFromRequest(request);
+      const machines = manager.list().map((machine) => {
+        if (!machine.snapshot) return machine;
+        return {
+          ...machine,
+          snapshot: filterSnapshotForUser(machine.snapshot, user),
+        };
+      });
+      return jsonResponse({ machines });
+    }
     if (parts[0] === "events" && parts.length === 1 && request.method === "GET") {
       let stop: (() => void) | undefined;
       let unwatchDevice: (() => void) | undefined;
@@ -51,7 +62,33 @@ export async function handleMachineRequest(request: Request, manager: MachineMan
           unwatchDevice = onRevoke?.(close);
           if (closed) return;
           const send = (text: string) => { if (closed) return; if ((controller.desiredSize ?? 0) < -4) { close(); return; } try { controller.enqueue(encoder.encode(text)); } catch { close(); } };
-          stop = manager.subscribe((event) => send(`data: ${JSON.stringify(event)}\n\n`));
+          const user = getUserFromRequest(request);
+          stop = manager.subscribe((event) => {
+            if (event.type === "machines" && Array.isArray(event.machines)) {
+              const filteredEvent = {
+                type: "machines",
+                machines: event.machines.map((m) => {
+                  if (!m.snapshot) return m;
+                  return {
+                    ...m,
+                    snapshot: filterSnapshotForUser(m.snapshot, user),
+                  };
+                }),
+              };
+              send(`data: ${JSON.stringify(filteredEvent)}\n\n`);
+            } else if (event.type === "machine-message" && event.message && (event.message as any).type === "snapshot" && (event.message as any).snapshot) {
+              const filteredEvent = {
+                ...event,
+                message: {
+                  ...event.message,
+                  snapshot: filterSnapshotForUser((event.message as any).snapshot, user),
+                },
+              };
+              send(`data: ${JSON.stringify(filteredEvent)}\n\n`);
+            } else {
+              send(`data: ${JSON.stringify(event)}\n\n`);
+            }
+          });
           if (closed) { cleanup(); return; }
           heartbeat = setInterval(() => send(": heartbeat\n\n"), 15_000);
           request.signal.addEventListener("abort", close, { once: true });

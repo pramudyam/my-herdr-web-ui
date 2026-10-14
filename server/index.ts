@@ -8,6 +8,7 @@ import type { AgentKind, AgentRenameRequest, AgentStatus, ClientMessage, ClientR
 import { alertStatus, paneTitle } from "../shared/notify-policy.ts";
 import { DEFAULT_PORT } from "../shared/protocol.ts";
 import { DEVICE_COOKIE, authClient, handleAuthRequest, isAuthenticated, parseCookies, presentedToken, presentedTokenHeld, recordPresentedTokenFailure, requiresAuth, unauthorizedJson } from "./auth.ts";
+import { filterSnapshotForUser, getUserFromRequest, handleUserRequest, tagWorkspaceOwner } from "./users.ts";
 import { cameThroughProxy, decideAccess, isLoopbackAddress, isServeOwnerRequest } from "./access.ts";
 import { DeviceStore, handleDeviceRequest } from "./devices.ts";
 import { remoteAccess, TailnetIdentitySource } from "./tailscale.ts";
@@ -1702,11 +1703,13 @@ export function createServer(
           } catch { relay?.close(); return new Response("remote websocket unavailable", { status: 502 }); }
           return new Response("websocket upgrade required", { status: 426 });
         }
-        const upgraded = bunServer.upgrade(request, { data: { attached: new Map<string, object>(), watches: new Map<string, PaneWatch>(), conversationInterests: new Set<string>(), mode: readOnly ? "observe" : "interact", output: new Map(), closing: false, roles: 0, deviceId, readOnly } });
+        const wsUser = getUserFromRequest(request);
+        const upgraded = bunServer.upgrade(request, { data: { attached: new Map<string, object>(), watches: new Map<string, PaneWatch>(), conversationInterests: new Set<string>(), mode: readOnly ? "observe" : "interact", output: new Map(), closing: false, roles: 0, deviceId, readOnly, username: wsUser } });
         if (upgraded) return undefined as unknown as Response;
         return new Response("websocket upgrade required", { status: 426 });
       }
 
+      if (pathname.startsWith("/api/user")) return handleUserRequest(request, pathname, token);
       if (pathname === "/api/auth") return handleAuthRequest(request, token, client);
       if (pathname === "/api/devices" || pathname.startsWith("/api/devices/")) {
         try {
@@ -1743,9 +1746,10 @@ export function createServer(
       }
 
       if (pathname === "/api/health") {
-        const auth: HealthAuth = access.level === "full"
+        const loggedUser = getUserFromRequest(request);
+        const auth: HealthAuth = loggedUser
           ? { required: false, authenticated: true, via: access.via, role: access.role }
-          : { required: true, authenticated, ...(authenticated ? {} : { reason: access.reason }) };
+          : { required: true, authenticated: false, reason: "token_required" };
         if (url.searchParams.get("scope") === "bridge") return jsonResponse({ ok: true, auth, bridge_protocol: BRIDGE_PROTOCOL });
         try {
           const info = await ping();
@@ -1765,7 +1769,9 @@ export function createServer(
 
       if (pathname === "/api/session") {
         try {
-          return jsonResponse({ snapshot: await clientSnapshot() });
+          const user = getUserFromRequest(request);
+          const rawSnap = await clientSnapshot();
+          return jsonResponse({ snapshot: filterSnapshotForUser(rawSnap, user) });
         } catch (error) {
           return errorResponse(error);
         }
@@ -1864,6 +1870,8 @@ export function createServer(
             ? await tabCreate({ ...options, workspaceId: payload.workspace_id as string })
             : await workspaceCreate(options);
           const workspaceId = created.tab.workspace_id;
+          const user = getUserFromRequest(request);
+          if (user) tagWorkspaceOwner(workspaceId, user);
           if (!payload.agent) {
             return jsonResponse({ workspace_id: workspaceId, pane_id: created.root_pane.pane_id, agent_started: false });
           }
@@ -2570,7 +2578,8 @@ export function createServer(
         if (client.data.relay) { client.data.relay.bind(client as ServerWebSocket<unknown>); return; }
         clients.add(client);
         try {
-          send(client, { type: "snapshot", snapshot: await clientSnapshot(), features: SERVER_FEATURES });
+          const wsUser = (client.data as any).username ?? null;
+          send(client, { type: "snapshot", snapshot: filterSnapshotForUser(await clientSnapshot(), wsUser), features: SERVER_FEATURES });
         } catch (error) {
           const code = error instanceof HerdrError ? error.code : "snapshot_failed";
           send(client, { type: "error", code, message: error instanceof Error ? error.message : String(error) });
