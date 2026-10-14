@@ -80,7 +80,7 @@ export function MachineSidebar(props: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
           <User size={13} color="var(--accent)" />
           <span style={{ fontWeight: "var(--fw-medium)", color: "var(--text)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
-            {currentUser?.name ?? "Priyo Pramudya"}
+            {currentUser?.name ?? "Pengguna"}
           </span>
           <span style={{ fontSize: "10px", padding: "1px 5px", borderRadius: "var(--radius-pill)", background: "var(--bg-input)", color: "var(--text-dim)" }}>
             {currentUser?.role === "admin" ? "Admin" : "Engineer"}

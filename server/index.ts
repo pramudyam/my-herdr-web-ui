@@ -1633,7 +1633,8 @@ export function createServer(
         tokenConfigured: token !== "",
         gated: devices.gated,
       });
-      const authenticated = access.level === "full" || (bridgePath && bridgeAuthorized);
+      const activeUser = getUserFromRequest(request);
+      const authenticated = (activeUser !== null) || (bridgePath && bridgeAuthorized);
 
       if (requiresAuth(pathname) && !authenticated) {
         // a script's Bearer guess is told to wait; a browser's cookie gets the usual 401 and its sign-in form
